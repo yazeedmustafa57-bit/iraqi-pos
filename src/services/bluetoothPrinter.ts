@@ -1,28 +1,25 @@
-import { BleManager, Device, Characteristic } from 'react-native-ble-plx';
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import { Transaction } from '../types';
 import { formatIQD } from '../i18n';
 import { generateReceiptContent } from './printer';
 
-const manager = new BleManager();
+let bleManagerInstance: any = null;
 
-let connectedDevice: Device | null = null;
-let writeCharacteristic: Characteristic | null = null;
+function getManager(): any {
+  if (!bleManagerInstance) {
+    try {
+      const { BleManager } = require('react-native-ble-plx');
+      bleManagerInstance = new BleManager();
+    } catch (e) {
+      console.warn('BLE module not available:', e);
+      return null;
+    }
+  }
+  return bleManagerInstance;
+}
 
-// Common thermal printer service/characteristic UUIDs
-const PRINTER_SERVICE_UUIDS = [
-  '000018f0-0000-1000-8000-00805f9b34fb',  // Common ESC/POS
-  '49535343-fe7d-4ae5-8fa9-9fafd205e455',  // Microair
-  '0000ffe0-0000-1000-8000-00805f9b34fb',  // CC2540
-  '0000fee7-0000-1000-8000-00805f9b34fb',  // Chinese printers
-];
-
-const PRINTER_WRITE_CHAR_UUIDS = [
-  '00002af0-0000-1000-8000-00805f9b34fb',
-  '49535343-1e8d-4ae5-8fa9-9fafd205e455',
-  '0000ffe1-0000-1000-8000-00805f9b34fb',
-  '0000fee9-0000-1000-8000-00805f9b34fb',
-];
+let connectedDevice: any = null;
+let writeCharacteristic: any = null;
 
 export interface PrinterDevice {
   id: string;
@@ -61,7 +58,9 @@ export async function scanForPrinters(
     throw new Error('Bluetooth permission denied');
   }
 
-  manager.startDeviceScan(null, null, (error, device) => {
+  const mgr = getManager();
+  if (!mgr) throw new Error('Bluetooth not available on this device');
+  mgr.startDeviceScan(null, null, (error: any, device: any) => {
     if (error) {
       console.warn('Scan error:', error);
       return;
@@ -76,7 +75,8 @@ export async function scanForPrinters(
   });
 
   setTimeout(() => {
-    manager.stopDeviceScan();
+    const m = getManager();
+    if (m) m.stopDeviceScan();
   }, durationMs);
 }
 
@@ -85,13 +85,15 @@ export async function connectToPrinter(
   deviceName: string
 ): Promise<boolean> {
   try {
-    manager.stopDeviceScan();
+    const mgr = getManager();
+    if (mgr) mgr.stopDeviceScan();
+    if (!mgr) throw new Error('Bluetooth not available');
 
-    const device = await manager.connectToDevice(deviceId);
+    const device = await mgr.connectToDevice(deviceId);
     await device.discoverAllServicesAndCharacteristics();
 
     const services = await device.services();
-    let foundWriteChar: Characteristic | null = null;
+    let foundWriteChar: any = null;
 
     for (const service of services) {
       const chars = await service.characteristics();
@@ -112,7 +114,6 @@ export async function connectToPrinter(
     connectedDevice = device;
     writeCharacteristic = foundWriteChar;
 
-    // Monitor disconnection
     device.onDisconnected(() => {
       connectedDevice = null;
       writeCharacteristic = null;
@@ -150,17 +151,15 @@ async function sendRawData(data: Uint8Array): Promise<void> {
     throw new Error('Printer not connected');
   }
 
-  // Send in chunks of 20 bytes (BLE MTU limitation)
   const chunkSize = 20;
   for (let i = 0; i < data.length; i += chunkSize) {
     const chunk = data.slice(i, i + chunkSize);
     const bytes = Array.from(chunk);
     if (writeCharacteristic.isWritableWithResponse) {
-      await (writeCharacteristic as any).writeWithResponse(bytes);
+      await writeCharacteristic.writeWithResponse(bytes);
     } else {
-      await (writeCharacteristic as any).writeWithoutResponse(bytes);
+      await writeCharacteristic.writeWithoutResponse(bytes);
     }
-    // Small delay between chunks
     await new Promise((r) => setTimeout(r, 30));
   }
 }
@@ -186,11 +185,11 @@ export async function printTestPage(storeName: string = 'كاشير - POS'): Pro
   }
 
   const lines = [
-    '\x1b\x40',           // Initialize
-    '\x1b\x61\x01',       // Center align
-    '\x1b\x45\x01',       // Bold on
+    '\x1b\x40',
+    '\x1b\x61\x01',
+    '\x1b\x45\x01',
     storeName + '\n',
-    '\x1b\x45\x00',       // Bold off
+    '\x1b\x45\x00',
     '================================\n',
     '\x1b\x61\x01',
     'اختبار الطباعة\n',

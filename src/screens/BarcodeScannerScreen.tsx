@@ -118,7 +118,7 @@ export default function BarcodeScannerScreen() {
           <Ionicons name="camera-outline" size={48} color="#888" />
           <Text style={styles.noPermissionText}>{t('barcode.scanHint')}</Text>
           <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
-            <Text style={styles.permissionBtnText}>Grant Permission</Text>
+            <Text style={styles.permissionBtnText}>{t("barcode.grantPermission")}</Text>
           </TouchableOpacity>
           <Text style={styles.scannerHint}>{t('barcode.orConnect')}</Text>
         </View>

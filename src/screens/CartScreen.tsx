@@ -58,7 +58,7 @@ export default function CartScreen() {
 
   const handlePay = async () => {
     if (selectedMethod === 'cash' && paidAmount < total) {
-      Alert.alert(t('general.error'), 'المبلغ المدفوع أقل من المجموع');
+      Alert.alert(t('general.error'), t('cart.insufficient'));
       return;
     }
 
@@ -225,7 +225,7 @@ export default function CartScreen() {
                   <View style={styles.insufficientRow}>
                     <Ionicons name="alert-circle" size={16} color="#e53935" />
                     <Text style={styles.insufficientText}>
-                      المبلغ غير كافٍ - يتطلب {formatIQD(total)}
+                      {t('cart.insufficient')} - {formatIQD(total)} {formatIQD(total)}
                     </Text>
                   </View>
                 )}
@@ -237,9 +237,9 @@ export default function CartScreen() {
                 <Ionicons name="information-circle-outline" size={18} color="#555" />
                 <Text style={styles.methodInfoText}>
                   {selectedMethod === 'zaincash' && t('payment.redirectZaincash')}
-                  {selectedMethod === 'asia_hawala' && 'سيتم توجيهك إلى تطبيق آسيا هавالة'}
+                  {selectedMethod === 'asia_hawala' && t('payment.redirectAsiaHawala')}
                   {selectedMethod === 'fastpay' && t('payment.redirectFastpay')}
-                  {selectedMethod === 'credit_card' && 'اتصل بجهاز الدفع'}
+                  {selectedMethod === 'credit_card' && t('payment.credit_card')}
                 </Text>
               </View>
             )}

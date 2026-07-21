@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>كاشير POS - Vorschau</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #111; color: #333; overflow-x: hidden; }
+
+.phone { width: 375px; margin: 20px auto; border-radius: 32px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 3px solid #333; background: #f5f5f5; position: relative; }
+.phone-notch { height: 44px; background: #1a6b3c; border-radius: 32px 32px 0 0; }
+
+.screen { display: none; min-height: 600px; }
+.screen.active { display: block; }
+
+/* Tab Bar */
+.tabbar { display: flex; background: #fff; border-top: 1px solid #eee; padding: 8px 0 12px; position: sticky; bottom: 0; }
+.tab { flex: 1; text-align: center; font-size: 10px; color: #888; cursor: pointer; padding: 4px; }
+.tab.active { color: #1a6b3c; font-weight: 700; }
+.tab svg { display: block; margin: 0 auto 2px; }
+
+/* Header */
+.header { background: #1a6b3c; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { color: #fff; font-size: 20px; }
+
+/* Cards */
+.card { background: #fff; margin: 12px; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+/* Auth Screen */
+.auth-bg { background: #1a6b3c; min-height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+.auth-logo { width: 80px; height: 80px; border-radius: 40px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 16px; }
+.auth-name { color: #fff; font-size: 28px; font-weight: bold; margin-bottom: 4px; }
+.auth-sub { color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 24px; }
+.auth-card { background: #fff; border-radius: 16px; padding: 20px; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.auth-card h2 { text-align: center; margin-bottom: 16px; font-size: 17px; }
+.auth-field { margin-bottom: 12px; }
+.auth-field label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
+.auth-field input { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 10px; font-size: 15px; background: #fafafa; }
+.auth-btn { width: 100%; padding: 12px; background: #1a6b3c; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+
+/* Product Grid */
+.search-bar { display: flex; align-items: center; background: #fff; margin: 0 12px 8px; padding: 8px 12px; border-radius: 10px; gap: 8px; }
+.search-bar input { flex: 1; border: none; font-size: 14px; outline: none; }
+.cat-chips { display: flex; gap: 6px; padding: 8px 12px; background: #fff; overflow-x: auto; }
+.cat-chip { padding: 6px 14px; border-radius: 16px; font-size: 12px; background: #f0f0f0; white-space: nowrap; cursor: pointer; }
+.cat-chip.active { background: #1a6b3c; color: #fff; }
+.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px; }
+.product-card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer; }
+.product-card .name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.product-card .name-en { font-size: 11px; color: #888; margin-bottom: 6px; }
+.product-card .price { color: #1a6b3c; font-weight: bold; font-size: 15px; }
+.product-card .stock { font-size: 11px; color: #888; margin-top: 4px; }
+.product-card .stock.low { color: #e53935; }
+
+/* Cart */
+.cart-item { display: flex; align-items: center; background: #fff; margin: 0 12px 8px; padding: 12px; border-radius: 10px; gap: 10px; }
+.cart-item .info { flex: 1; }
+.cart-item .info .name { font-weight: 600; font-size: 14px; }
+.cart-item .info .price { color: #1a6b3c; font-weight: bold; font-size: 13px; }
+.cart-item .qty { display: flex; align-items: center; gap: 8px; }
+.cart-item .qty button { width: 28px; height: 28px; border-radius: 14px; border: 1.5px solid #ddd; background: #fff; font-size: 16px; cursor: pointer; }
+.cart-item .qty span { font-weight: 700; min-width: 20px; text-align: center; }
+.cart-footer { background: #fff; padding: 12px 16px; border-top: 1px solid #eee; }
+.cart-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+.cart-total span:last-child { color: #1a6b3c; }
+.pay-btn { width: 100%; padding: 14px; background: #1a6b3c; color: #fff; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* Payment Modal */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-bg.show { display: flex; }
+.modal { background: #fff; border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-width: 375px; max-height: 85vh; overflow-y: auto; }
+.modal h2 { text-align: center; margin-bottom: 16px; font-size: 18px; }
+.pay-methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.pay-method { padding: 10px 4px; border: 2px solid #1a6b3c; border-radius: 12px; text-align: center; font-size: 11px; font-weight: 600; color: #1a6b3c; cursor: pointer; }
+.pay-method.active { background: #1a6b3c; color: #fff; }
+.cash-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 12px; }
+.change-row { display: flex; justify-content: space-between; padding: 10px; background: #f0f0f0; border-radius: 8px; margin-bottom: 12px; font-weight: 600; }
+.change-row span:last-child { color: #1a6b3c; }
+
+/* Summary */
+.date-nav { display: flex; align-items: center; background: #fff; margin: 12px; border-radius: 12px; padding: 8px; }
+.date-arrow { padding: 8px 12px; font-size: 20px; color: #1a6b3c; cursor: pointer; }
+.date-center { flex: 1; text-align: center; }
+.date-center .weekday { font-weight: 700; font-size: 15px; }
+.date-center .fulldate { font-size: 12px; color: #888; }
+.stats-row { display: flex; gap: 12px; padding: 0 12px; }
+.stat-card { flex: 1; background: #fff; border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.stat-card .value { font-size: 18px; font-weight: bold; color: #1a6b3c; margin-top: 6px; }
+.stat-card .label { font-size: 11px; color: #888; margin-top: 4px; }
+.method-row { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 12px; border-radius: 10px; margin: 0 12px 6px; }
+.method-left { display: flex; align-items: center; gap: 10px; }
+.method-right { display: flex; align-items: center; gap: 8px; }
+.method-pct { font-size: 12px; color: #888; }
+.method-amt { font-weight: bold; color: #1a6b3c; }
+.method-cnt { font-size: 12px; color: #888; background: #f0f0f0; padding: 2px 6px; border-radius: 8px; }
+.tx-row { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 12px; border-radius: 10px; margin: 0 12px 6px; }
+.tx-time { font-weight: 700; font-size: 14px; }
+.tx-method { font-size: 11px; color: #888; }
+.tx-total { font-weight: bold; color: #1a6b3c; }
+.tx-dot { width: 8px; height: 8px; border-radius: 4px; background: #1a6b3c; }
+
+/* Settings */
+.setting-row { display: flex; align-items: center; background: #fff; padding: 14px; border-radius: 10px; margin: 0 16px 6px; gap: 10px; cursor: pointer; }
+.setting-row.active { border: 2px solid #1a6b3c; }
+.setting-icon { font-size: 20px; }
+.setting-label { flex: 1; font-size: 15px; font-weight: 500; }
+.flag { font-size: 20px; }
+.check { color: #1a6b3c; font-size: 18px; }
+.section-title { font-size: 15px; font-weight: 700; margin: 16px 16px 8px; }
+
+/* Barcode Scanner */
+.scanner-bg { background: #000; min-height: 600px; position: relative; display: flex; flex-direction: column; }
+.scanner-overlay { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+.scan-frame { width: 260px; height: 140px; border: 2px solid #4CAF50; border-radius: 12px; }
+.scan-hint { position: absolute; bottom: 16px; color: #fff; font-size: 13px; text-align: center; width: 100%; text-shadow: 0 1px 4px #000; }
+.scanner-bar { background: #145228; display: flex; align-items: center; padding: 10px 16px; gap: 12px; }
+.scanner-bar .count { font-size: 20px; font-weight: bold; color: #fff; }
+.scanner-bar .total { flex: 1; text-align: right; font-size: 20px; font-weight: bold; color: #fff; }
+.scanner-bar .cart-btn { background: #4CAF50; padding: 10px 16px; border-radius: 20px; color: #fff; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+
+/* Navigation buttons */
+.screen-nav { display: flex; gap: 8px; justify-content: center; padding: 16px; flex-wrap: wrap; }
+.screen-nav button { padding: 8px 16px; border-radius: 20px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; }
+.screen-nav button.active { background: #1a6b3c; color: #fff; }
+.screen-nav button:not(.active) { background: #e0e0e0; color: #333; }
+
+.lang-label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #888; justify-content: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1 style="color:#fff;text-align:center;padding:20px;font-size:24px;">كاشير POS - Vorschau</h1>
+<p style="color:#aaa;text-align:center;margin-bottom:16px;font-size:14px;">Tippe auf die Buttons um die Screens zu sehen</p>
+
+<div class="screen-nav">
+  <button class="active" onclick="showScreen('auth')">Login</button>
+  <button onclick="showScreen('catalog')">Produkte</button>
+  <button onclick="showScreen('scanner')">Scanner</button>
+  <button onclick="showScreen('cart')">Warenkorb</button>
+  <button onclick="showScreen('summary')">Übersicht</button>
+  <button onclick="showScreen('settings')">Einstellungen</button>
+</div>
+
+<div class="phone">
+  <div class="phone-notch"></div>
+
+  <!-- AUTH SCREEN -->
+  <div id="screen-auth" class="screen active">
+    <div class="auth-bg">
+      <div class="auth-logo">🏪</div>
+      <div class="auth-name">كاشير</div>
+      <div class="auth-sub">Irrakisches Kassensystem</div>
+      <div class="auth-card">
+        <h2>Anmelden</h2>
+        <div class="auth-field">
+          <label>Telefonnummer *</label>
+          <input type="tel" placeholder="07701234567" readonly>
+        </div>
+        <div class="auth-field">
+          <label>PIN *</label>
+          <input type="password" value="••••" readonly>
+        </div>
+        <button class="auth-btn">🔑 Anmelden</button>
+      </div>
+      <p style="color:rgba(255,255,255,0.6);margin-top:16px;font-size:13px;">Kein Konto? <b style="color:#fff;">Neues Konto erstellen</b></p>
+    </div>
+  </div>
+
+  <!-- CATALOG SCREEN -->
+  <div id="screen-catalog" class="screen">
+    <div class="header">
+      <h1>📦 Produkte</h1>
+      <span style="color:#fff;font-size:14px;">🟢 Online</span>
+    </div>
+    <div class="search-bar" style="margin-top:12px;">
+      🔍 <input placeholder="Produkt oder Barcode suchen..." readonly>
+    </div>
+    <div class="cat-chips">
+      <span class="cat-chip active">Alle</span>
+      <span class="cat-chip">Lebensmittel</span>
+      <span class="cat-chip">Getränke</span>
+      <span class="cat-chip">Snacks</span>
+      <span class="cat-chip">Haushalt</span>
+      <span class="cat-chip">Elektronik</span>
+    </div>
+    <div class="product-grid">
+      <div class="product-card">
+        <div class="name">شاي أحمد</div>
+        <div class="name-en">Ahmed Tea</div>
+        <div class="price">2.500 د.ع</div>
+        <div class="stock">50 Bestand</div>
+      </div>
+      <div class="product-card">
+        <div class="name">بيبسي</div>
+        <div class="name-en">Pepsi Can</div>
+        <div class="price">1.000 د.ع</div>
+        <div class="stock">120 Bestand</div>
+      </div>
+      <div class="product-card">
+        <div class="name">جبنة بوك</div>
+        <div class="name-en">Bull Cheese</div>
+        <div class="price">3.500 د.ع</div>
+        <div class="stock">30 Bestand</div>
+      </div>
+      <div class="product-card">
+        <div class="name">سكر</div>
+        <div class="name-en">Sugar 1kg</div>
+        <div class="price">4.000 د.ع</div>
+        <div class="stock low">0 Bestand</div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab active">📦<br>Produkte</div>
+      <div class="tab">🛒<br>Warenkorb</div>
+      <div class="tab">📊<br>Übersicht</div>
+      <div class="tab">⚙️<br>Einstellungen</div>
+    </div>
+  </div>
+
+  <!-- BARCODE SCANNER SCREEN -->
+  <div id="screen-scanner" class="screen">
+    <div class="scanner-bg">
+      <div class="header">
+        <span style="color:#fff">← </span>
+        <h1 style="font-size:16px;">Barcode scannen</h1>
+        <span style="width:24px"></span>
+      </div>
+      <div class="scanner-overlay">
+        <div class="scan-frame"></div>
+        <div style="position:absolute;top:0;left:0;right:0;bottom:40%;background:rgba(0,0,0,0.6);"></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;height:35%;background:rgba(0,0,0,0.6);"></div>
+        <div class="scan-hint">Kamera auf Barcode richten</div>
+      </div>
+      <div class="scanner-bar">
+        <div>
+          <div class="count">3</div>
+          <div style="font-size:10px;color:#c8e6c9;">Artikel</div>
+        </div>
+        <div class="total">11.000 د.ع</div>
+        <div class="cart-btn">🛒 Bezahlen</div>
+      </div>
+      <div style="background:#fff;padding:12px;">
+        <div style="display:flex;gap:8px;">
+          <input style="flex:1;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:18px;text-align:center;" placeholder="Barcode-Nummer" readonly>
+          <div style="width:48px;height:48px;background:#1a6b3c;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;">✓</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CART SCREEN -->
+  <div id="screen-cart" class="screen">
+    <div class="header">
+      <h1>🛒 Warenkorb</h1>
+      <span style="background:#145228;color:#fff;padding:2px 10px;border-radius:12px;font-size:14px;">3</span>
+    </div>
+    <div style="padding:8px 0;min-height:300px;">
+      <div class="cart-item">
+        <div class="info">
+          <div class="name">شاي أحمد (Ahmed Tea)</div>
+          <div class="price">2.500 د.ع</div>
+        </div>
+        <div class="qty">
+          <button>-</button>
+          <span>2</span>
+          <button>+</button>
+        </div>
+      </div>
+      <div class="cart-item">
+        <div class="info">
+          <div class="name">بيبسي (Pepsi)</div>
+          <div class="price">1.000 د.ع</div>
+        </div>
+        <div class="qty">
+          <button>-</button>
+          <span>3</span>
+          <button>+</button>
+        </div>
+      </div>
+      <div class="cart-item">
+        <div class="info">
+          <div class="name">جبنة بوك (Cheese)</div>
+          <div class="price">3.500 د.ع</div>
+        </div>
+        <div class="qty">
+          <button>-</button>
+          <span>1</span>
+          <button>+</button>
+        </div>
+      </div>
+    </div>
+    <div class="cart-footer">
+      <div class="cart-total">
+        <span>Gesamt</span>
+        <span>9.500 د.ع</span>
+      </div>
+      <button class="pay-btn" onclick="showPaymentModal()">💳 Bezahlen</button>
+    </div>
+    <div class="tabbar">
+      <div class="tab">📦<br>Produkte</div>
+      <div class="tab active">🛒<br>Warenkorb</div>
+      <div class="tab">📊<br>Übersicht</div>
+      <div class="tab">⚙️<br>Einstellungen</div>
+    </div>
+  </div>
+
+  <!-- SUMMARY SCREEN -->
+  <div id="screen-summary" class="screen">
+    <div class="header">
+      <h1>📊 Tagesübersicht</h1>
+      <span style="color:#fff;font-size:14px;">🟢</span>
+    </div>
+    <div class="date-nav">
+      <div class="date-arrow">‹</div>
+      <div class="date-center">
+        <div class="weekday">Freitag</div>
+        <div class="fulldate">21. Juli 2026</div>
+      </div>
+      <div class="date-arrow">›</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div style="font-size:24px;">📈</div>
+        <div class="value">156.500 د.ع</div>
+        <div class="label">Gesamtumsatz</div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size:24px;">🧾</div>
+        <div class="value">23</div>
+        <div class="label">Transaktionen</div>
+      </div>
+    </div>
+    <p style="text-align:center;color:#888;font-size:13px;margin:8px 0;">⌀ Durchschnitt: 6.804 د.ع</p>
+    
+    <div style="font-size:15px;font-weight:700;margin:12px 16px 8px;">Umsatz nach Zahlungsmethode</div>
+    <div class="method-row">
+      <div class="method-left">💵 <span>Bargeld</span></div>
+      <div class="method-right">
+        <span class="method-pct">65%</span>
+        <span class="method-amt">101.725 د.ع</span>
+        <span class="method-cnt">15×</span>
+      </div>
+    </div>
+    <div class="method-row">
+      <div class="method-left">📱 <span>ZainCash</span></div>
+      <div class="method-right">
+        <span class="method-pct">20%</span>
+        <span class="method-amt">31.300 د.ع</span>
+        <span class="method-cnt">5×</span>
+      </div>
+    </div>
+    <div class="method-row">
+      <div class="method-left">🏦 <span>FIB Bank</span></div>
+      <div class="method-right">
+        <span class="method-pct">15%</span>
+        <span class="method-amt">23.475 د.ع</span>
+        <span class="method-cnt">3×</span>
+      </div>
+    </div>
+
+    <div style="font-size:15px;font-weight:700;margin:16px 16px 8px;">Letzte Transaktionen (23)</div>
+    <div class="tx-row">
+      <div>
+        <div class="tx-time">⏰ 14:32</div>
+        <div class="tx-method">Bargeld</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="tx-total">8.500 د.ع</div>
+        <div style="font-size:11px;color:#e65100;">↻ 1.500 د.ع</div>
+      </div>
+    </div>
+    <div class="tx-row">
+      <div>
+        <div class="tx-time">⏰ 14:15</div>
+        <div class="tx-method">ZainCash</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="tx-total">12.000 د.ع</div>
+        <div class="tx-dot" style="display:inline-block;vertical-align:middle;"></div>
+      </div>
+    </div>
+    <div class="tx-row">
+      <div>
+        <div class="tx-time">⏰ 13:48</div>
+        <div class="tx-method">FIB Bank</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="tx-total">4.500 د.ع</div>
+        <div class="tx-dot" style="display:inline-block;vertical-align:middle;"></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab">📦<br>Produkte</div>
+      <div class="tab">🛒<br>Warenkorb</div>
+      <div class="tab active">📊<br>Übersicht</div>
+      <div class="tab">⚙️<br>Einstellungen</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div id="screen-settings" class="screen">
+    <div class="header">
+      <h1>⚙️ Einstellungen</h1>
+      <span style="color:#fff;font-size:14px;">🟢 Online</span>
+    </div>
+    <div class="card" style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+      <span>🟢</span>
+      <span style="font-weight:500;">Online</span>
+    </div>
+
+    <div class="section-title">🌐 Sprache</div>
+    <div class="setting-row">
+      <span class="flag">🇮🇶</span>
+      <span class="setting-label">العربية</span>
+    </div>
+    <div class="setting-row">
+      <span class="flag">🇸🇩</span>
+      <span class="setting-label">Kurdish (Sorani)</span>
+    </div>
+    <div class="setting-row">
+      <span class="flag">🇬🇧</span>
+      <span class="setting-label">English</span>
+    </div>
+    <div class="setting-row active">
+      <span class="flag">🇩🇪</span>
+      <span class="setting-label" style="color:#1a6b3c;font-weight:700;">Deutsch</span>
+      <span class="check">✓</span>
+    </div>
+
+    <div class="section-title">🖨️ Drucker</div>
+    <div class="setting-row">
+      <span class="setting-icon">🔵</span>
+      <span class="setting-label">Drucker verbinden</span>
+      <span style="color:#1a6b3c;">🔍</span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-icon">🖨️</span>
+      <span class="setting-label" style="color:#888;">Getrennt</span>
+      <span style="width:10px;height:10px;border-radius:5px;background:#888;display:inline-block;"></span>
+    </div>
+
+    <div class="section-title">🏪 Laden</div>
+    <div class="setting-row">
+      <span class="setting-icon">🏪</span>
+      <div>
+        <div style="font-weight:700;">Ahmeds Laden</div>
+        <div style="font-size:12px;color:#888;">Ahmed - 07701234567</div>
+      </div>
+    </div>
+
+    <div class="setting-row" style="margin-top:8px;">
+      <span class="setting-icon">🚪</span>
+      <span class="setting-label" style="color:#e53935;">Abmelden</span>
+    </div>
+
+    <div class="card" style="text-align:center;margin-top:12px;">
+      <div style="font-size:18px;font-weight:bold;color:#1a6b3c;">كاشير - POS</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">Iraqi Point of Sale</div>
+      <div style="font-size:11px;color:#aaa;margin-top:4px;">v1.0.0</div>
+    </div>
+    <div style="height:16px;"></div>
+    <div class="tabbar">
+      <div class="tab">📦<br>Produkte</div>
+      <div class="tab">🛒<br>Warenkorb</div>
+      <div class="tab">📊<br>Übersicht</div>
+      <div class="tab active">⚙️<br>Einstellungen</div>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="modal-bg" onclick="if(event.target===this)hidePaymentModal()">
+  <div class="modal">
+    <h2>💳 Zahlungsmethode wählen</h2>
+    <div class="pay-methods">
+      <div class="pay-method active">💵 Bargeld</div>
+      <div class="pay-method">📱 ZainCash</div>
+      <div class="pay-method">👛 AsiaHawala</div>
+      <div class="pay-method">⚡ FastPay</div>
+      <div class="pay-method">💳 Kreditkarte</div>
+      <div class="pay-method">🏦 FIB Bank</div>
+    </div>
+    <div style="margin-bottom:8px;font-weight:600;">Bezahlt</div>
+    <input class="cash-input" value="10.000" readonly>
+    <div class="change-row">
+      <span>Wechselgeld</span>
+      <span>500 د.ع</span>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <button style="flex:1;padding:14px;border-radius:12px;border:none;background:#f0f0f0;font-size:16px;font-weight:600;cursor:pointer;">Abbrechen</button>
+      <button style="flex:2;padding:14px;border-radius:12px;border:none;background:#1a6b3c;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;">✓ Zahlung bestätigen</button>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;padding:20px;color:#666;font-size:13px;">
+  <p>Click the buttons above to switch between screens</p>
+  <div class="lang-label" style="margin-top:12px;">
+    🌐 Arabisch (RTL) | 🌐 Kurdisch (RTL) | 🌐 Englisch (LTR) | 🌐 <b>Deutsch (LTR)</b>
+  </div>
+</div>
+
+<script>
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('.screen-nav button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+function showPaymentModal() { document.getElementById('paymentModal').classList.add('show'); }
+function hidePaymentModal() { document.getElementById('paymentModal').classList.remove('show'); }
+</script>
+</body>
+</html>

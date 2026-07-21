@@ -22,6 +22,7 @@ import { getDatabase, seedDemoProducts } from './src/database/db';
 import { formatIQD } from './src/i18n';
 import { syncPendingPayments } from './src/services/payments';
 import { ScannerAudioView } from './src/services/scannerSound';
+import { translations } from './src/i18n/translations';
 
 // Force RTL for Arabic
 I18nManager.forceRTL(true);
@@ -30,30 +31,30 @@ I18nManager.allowRTL(true);
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
-  { hasError: boolean; error: string }
+  { hasError: boolean; error: string; lang: string }
 > {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: '' };
+    this.state = { hasError: false, error: '', lang: 'ar' };
   }
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error: error.message };
   }
   render() {
     if (this.state.hasError) {
+      const t = (key: string) => translations[this.state.lang as keyof typeof translations]?.[key] ?? key;
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: 24 }}>
           <Ionicons name="warning-outline" size={48} color="#e65100" />
-          <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 16, color: '#333', textAlign: 'center' }}>حدث خطأ</Text>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 16, color: '#333', textAlign: 'center' }}>{t('app.error')}</Text>
           <Text style={{ fontSize: 14, color: '#888', marginTop: 8, textAlign: 'center' }}>{this.state.error}</Text>
           <TouchableOpacity
             style={{ marginTop: 20, backgroundColor: '#1a6b3c', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}
             onPress={() => this.setState({ hasError: false, error: '' })}
           >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>إعادة المحاولة</Text>
+            <Text style={{ color: '#fff', fontWeight: '600' }}>{t('app.retry')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -65,6 +66,8 @@ class ErrorBoundary extends React.Component<
 function PaymentSuccessOverlay() {
   const show = useAppStore((s) => s.showPaymentSuccess);
   const lastTx = useAppStore((s) => s.lastTransaction);
+  const lang = useAppStore((s) => s.language);
+  const t = (key: string) => translations[lang]?.[key] ?? key;
 
   if (!show || !lastTx) return null;
 
@@ -74,16 +77,16 @@ function PaymentSuccessOverlay() {
         <View style={styles.successIcon}>
           <Ionicons name="checkmark-circle" size={56} color="#fff" />
         </View>
-        <Text style={styles.successTitle}>تم الدفع بنجاح</Text>
+        <Text style={styles.successTitle}>{t('payment.success')}</Text>
         <Text style={styles.successAmount}>{formatIQD(lastTx.total)}</Text>
         <Text style={styles.successMethod}>{lastTx.paymentMethod.toUpperCase()}</Text>
         {lastTx.paymentMethod === 'cash' && lastTx.change > 0 && (
-          <Text style={styles.successChange}>المتبقي: {formatIQD(lastTx.change)}</Text>
+          <Text style={styles.successChange}>{t('payment.change')}: {formatIQD(lastTx.change)}</Text>
         )}
         {lastTx.status === 'pending_sync' && (
           <View style={styles.pendingBadge}>
             <Ionicons name="sync" size={14} color="#fff" />
-            <Text style={styles.pendingText}> في انتظار المزامنة</Text>
+            <Text style={styles.pendingText}>{t('general.pendingSync')}</Text>
           </View>
         )}
       </View>
@@ -93,6 +96,8 @@ function PaymentSuccessOverlay() {
 
 function MainTabs() {
   const itemCount = useCartStore((s) => s.getItemCount());
+  const lang = useAppStore((s) => s.language);
+  const t = (key: string) => translations[lang]?.[key] ?? key;
 
   return (
     <Tab.Navigator
@@ -119,18 +124,18 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Catalog" component={CatalogScreen} options={{ tabBarLabel: 'المنتجات' }} />
+      <Tab.Screen name="Catalog" component={CatalogScreen} options={{ tabBarLabel: t('nav.tabCatalog') }} />
       <Tab.Screen
         name="Cart"
         component={CartScreen}
         options={{
-          tabBarLabel: 'السلة',
+          tabBarLabel: t('nav.tabCart'),
           tabBarBadge: itemCount > 0 ? itemCount : undefined,
           tabBarBadgeStyle: { backgroundColor: '#1a6b3c' },
         }}
       />
-      <Tab.Screen name="Summary" component={SummaryScreen} options={{ tabBarLabel: 'ملخص' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'إعدادات' }} />
+      <Tab.Screen name="Summary" component={SummaryScreen} options={{ tabBarLabel: t('nav.tabSummary') }} />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: t('nav.tabSettings') }} />
     </Tab.Navigator>
   );
 }
@@ -140,6 +145,8 @@ export default function App() {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
   const setIsOnline = useAppStore((s) => s.setIsOnline);
   const isOnline = useAppStore((s) => s.isOnline);
+  const lang = useAppStore((s) => s.language);
+  const t = (key: string) => translations[lang]?.[key] ?? key;
 
   useEffect(() => {
     const init = async () => {
@@ -185,7 +192,7 @@ export default function App() {
   if (!dbReady) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>جاري التحميل...</Text>
+        <Text style={styles.loadingText}>{t('app.loading')}</Text>
       </View>
     );
   }

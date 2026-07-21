@@ -39,23 +39,23 @@ export default function AuthScreen() {
 
   const handleRegister = async () => {
     if (!shopName.trim()) {
-      Alert.alert('خطأ', t('general.error') + ': Shop name required');
+      Alert.alert(t('general.error'), t('auth.shopNameRequired'));
       return;
     }
     if (!ownerName.trim()) {
-      Alert.alert('خطأ', t('general.error') + ': Owner name required');
+      Alert.alert(t('general.error'), t('auth.ownerNameRequired'));
       return;
     }
     if (!phone.trim() || phone.trim().length < 10) {
-      Alert.alert('خطأ', t('general.error') + ': Invalid phone number');
+      Alert.alert(t('general.error'), t('auth.invalidPhone'));
       return;
     }
     if (!pin || pin.length < 4) {
-      Alert.alert('خطأ', t('general.error') + ': PIN must be 4+ digits');
+      Alert.alert(t('general.error'), t('auth.pinTooShort'));
       return;
     }
     if (pin !== pinConfirm) {
-      Alert.alert('خطأ', t('general.error') + ': PINs do not match');
+      Alert.alert(t('general.error'), t('auth.pinMismatch'));
       return;
     }
 
@@ -65,20 +65,20 @@ export default function AuthScreen() {
       setIsAuthenticated(true);
     } catch (err: any) {
       if (String(err).includes('PHONE_EXISTS')) {
-        Alert.alert('خطأ', t('general.error') + ': Phone already registered');
+        Alert.alert(t('general.error'), t('auth.phoneExists'));
       } else {
-        Alert.alert('خطأ', String(err));
+        Alert.alert(t('general.error'), String(err));
       }
     }
   };
 
   const handleLogin = async () => {
     if (!phone.trim()) {
-      Alert.alert('خطأ', t('general.error') + ': Enter phone number');
+      Alert.alert(t('general.error'), t('auth.enterPhone'));
       return;
     }
     if (!pin) {
-      Alert.alert('خطأ', t('general.error') + ': Enter PIN');
+      Alert.alert(t('general.error'), t('auth.enterPin'));
       return;
     }
 
@@ -88,10 +88,10 @@ export default function AuthScreen() {
         setCurrentUser(user);
         setIsAuthenticated(true);
       } else {
-        Alert.alert('خطأ', t('general.error') + ': Wrong phone or PIN');
+        Alert.alert(t('general.error'), t('auth.wrongCredentials'));
       }
     } catch (err: any) {
-      Alert.alert('خطأ', String(err));
+      Alert.alert(t('general.error'), String(err));
     }
   };
 
@@ -99,7 +99,7 @@ export default function AuthScreen() {
     return (
       <View style={styles.loadingContainer}>
         <Ionicons name="key-outline" size={48} color="#fff" />
-        <Text style={styles.loadingText}>جاري التحميل...</Text>
+        <Text style={styles.loadingText}>{t('app.loading')}</Text>
       </View>
     );
   }
@@ -115,45 +115,33 @@ export default function AuthScreen() {
           <View style={styles.logoCircle}>
             <Ionicons name="storefront" size={48} color="#fff" />
           </View>
-          <Text style={styles.appName}>كاشير</Text>
-          <Text style={styles.appSubtitle}>نظام نقاط البيع العراقي</Text>
+          <Text style={styles.appName}>{t('auth.appName')}</Text>
+          <Text style={styles.appSubtitle}>{t('auth.shopSubtitle')}</Text>
         </View>
-
-        {/* Toggle Login/Register */}
-        {!isLogin && (
-          <View style={styles.toggleRow}>
-            <TouchableOpacity onPress={() => setIsLogin(true)}>
-              <Text style={[styles.toggleText, styles.toggleActive]}>تسجيل الدخول</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsLogin(false)}>
-              <Text style={[styles.toggleText, !isLogin ? styles.toggleActive : {}]}>حساب جديد</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Form */}
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>
-            {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
+            {isLogin ? t('auth.login') : t('auth.registerNew')}
           </Text>
 
           {/* Registration fields */}
           {!isLogin && (
             <>
-              <Text style={styles.label}>اسم المتجر *</Text>
+              <Text style={styles.label}>{t('auth.shopName')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثال: محل آقا حسین"
+                placeholder={t('auth.shopNameHint')}
                 placeholderTextColor="#aaa"
                 value={shopName}
                 onChangeText={setShopName}
                 textAlign="right"
               />
 
-              <Text style={styles.label}>اسم صاحب المتجر *</Text>
+              <Text style={styles.label}>{t('auth.ownerName')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثال: حسین محمد"
+                placeholder={t('auth.ownerNameHint')}
                 placeholderTextColor="#aaa"
                 value={ownerName}
                 onChangeText={setOwnerName}
@@ -162,7 +150,7 @@ export default function AuthScreen() {
             </>
           )}
 
-          <Text style={styles.label}>رقم الهاتف *</Text>
+          <Text style={styles.label}>{t('auth.phone')}</Text>
           <TextInput
             style={styles.input}
             placeholder="07701234567"
@@ -174,11 +162,11 @@ export default function AuthScreen() {
             textAlign="left"
           />
 
-          <Text style={styles.label}>الـ PIN *</Text>
+          <Text style={styles.label}>{t('auth.pin')}</Text>
           <View style={styles.pinRow}>
             <TextInput
               style={[styles.input, { flex: 1 }]}
-              placeholder={isLogin ? t('general.error') + ': Enter PIN' : 'اختر PIN (4-6 أرقام)'}
+              placeholder={isLogin ? t('auth.pinHintLogin') : t('auth.pinHintRegister')}
               placeholderTextColor="#aaa"
               keyboardType="number-pad"
               secureTextEntry={!showPin}
@@ -197,10 +185,10 @@ export default function AuthScreen() {
 
           {!isLogin && (
             <>
-              <Text style={styles.label}>تأكيد الـ PIN *</Text>
+              <Text style={styles.label}>{t('auth.pinConfirm')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="أعد إدخال الـ PIN"
+                placeholder={t('auth.pinConfirmHint')}
                 placeholderTextColor="#aaa"
                 keyboardType="number-pad"
                 secureTextEntry={!showPin}
@@ -219,7 +207,7 @@ export default function AuthScreen() {
           >
             <Ionicons name={isLogin ? 'log-in-outline' : 'person-add-outline'} size={20} color="#fff" />
             <Text style={styles.submitBtnText}>
-              {isLogin ? 'دخول' : 'إنشاء حساب'}
+              {isLogin ? t('auth.loginBtn') : t('auth.registerBtn')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -227,14 +215,14 @@ export default function AuthScreen() {
         {/* Footer */}
         <Text style={styles.footer}>
           {isLogin
-            ? 'لا يوجد حساب؟ '
-            : 'لديك حساب بالفعل؟ '
+            ? t('auth.noAccount')
+            : t('auth.hasAccount')
           }
           <Text
             style={styles.footerLink}
             onPress={() => setIsLogin(!isLogin)}
           >
-            {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+            {isLogin ? t('auth.register') : t('auth.login')}
           </Text>
         </Text>
       </ScrollView>
@@ -287,21 +275,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
     textAlign: 'center',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    marginBottom: 20,
-  },
-  toggleText: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '600',
-  },
-  toggleActive: {
-    color: '#fff',
-    textDecorationLine: 'underline',
   },
   formCard: {
     backgroundColor: '#fff',

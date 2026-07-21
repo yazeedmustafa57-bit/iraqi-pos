@@ -42,7 +42,6 @@ export default function SettingsScreen() {
 
   React.useEffect(() => {
     checkPendingSync();
-    // Check if already connected
     if (isConnected()) {
       setConnectedName(getConnectedPrinterName());
       setPrinterConnected(true);
@@ -62,12 +61,12 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'تسجيل الخروج',
-      'هل تريد تسجيل الخروج؟',
+      t('settings.logout'),
+      t('settings.logoutConfirm'),
       [
         { text: t('general.cancel'), style: 'cancel' },
         {
-          text: 'خروج',
+          text: t('settings.logoutBtn'),
           style: 'destructive',
           onPress: () => {
             setCurrentUser(null);
@@ -80,12 +79,12 @@ export default function SettingsScreen() {
 
   const handleTestPrint = async () => {
     if (!isConnected()) {
-      Alert.alert(t('general.error'), 'الطابعة غير متصلة / Printer not connected');
+      Alert.alert(t('general.error'), t('settings.printerNotConnected'));
       return;
     }
     try {
       await printTestPage();
-      Alert.alert('✅', 'تم إرسال صفحة الاختبار / Test page sent');
+      Alert.alert('✅', t('settings.testPageSent'));
     } catch (error: any) {
       Alert.alert(t('general.error'), String(error?.message || error));
     }
@@ -94,7 +93,7 @@ export default function SettingsScreen() {
   const handleStartScan = async () => {
     const hasPerm = await requestBluetoothPermission();
     if (!hasPerm) {
-      Alert.alert('خطأ', 'يرجى تفعيل صلاحيات البلوتوث / Please grant Bluetooth permissions');
+      Alert.alert(t('general.error'), t('settings.bluetoothPermissionRequired'));
       return;
     }
 
@@ -113,7 +112,7 @@ export default function SettingsScreen() {
         10000
       );
     } catch (err: any) {
-      Alert.alert('خطأ', String(err?.message || err));
+      Alert.alert(t('general.error'), String(err?.message || err));
     } finally {
       setScanning(false);
     }
@@ -127,9 +126,9 @@ export default function SettingsScreen() {
       setPrinterConnected(true);
       setPrinterDeviceId(device.id);
       setShowScanModal(false);
-      Alert.alert('✅', `تم توصيل الطابعة: ${device.name}`);
+      Alert.alert('✅', `${t('settings.printerConnected')}: ${device.name}`);
     } catch (err: any) {
-      Alert.alert('خطأ الاتصال', String(err?.message || 'تعذر الاتصال بالطابعة'));
+      Alert.alert(t('general.error'), String(err?.message || ''));
     } finally {
       setConnecting(null);
     }
@@ -141,7 +140,7 @@ export default function SettingsScreen() {
       setConnectedName(null);
       setPrinterConnected(false);
       setPrinterDeviceId(null);
-      Alert.alert('تم', 'تم فصل الطابعة / Printer disconnected');
+      Alert.alert('✅', t('settings.printerDisconnectedOk'));
     } catch {}
   };
 
@@ -152,24 +151,16 @@ export default function SettingsScreen() {
         <ConnectivityIndicator />
       </View>
 
-      {/* Status */}
+      {/* Status Card */}
       <View style={styles.statusCard}>
         <View style={styles.statusRow}>
-          {isOnline ? (
-            <Ionicons name="wifi" size={20} color="#1a6b3c" />
-          ) : (
-            <Ionicons name="close-circle" size={20} color="#e65100" />
-          )}
-          <Text style={styles.statusText}>
-            {isOnline ? t('general.online') : t('general.offline')}
-          </Text>
+          <Ionicons name={isOnline ? 'wifi' : 'wifi'} size={20} color={isOnline ? '#1a6b3c' : '#e53935'} />
+          <Text style={styles.statusText}>{isOnline ? t('general.online') : t('general.offline')}</Text>
         </View>
         {pendingCount > 0 && (
           <View style={styles.statusRow}>
-            <Ionicons name="sync" size={20} color="#e65100" />
-            <Text style={[styles.statusText, { color: '#e65100' }]}>
-              {pendingCount} {t('general.pendingSync')}
-            </Text>
+            <Ionicons name="sync" size={16} color="#e65100" />
+            <Text style={[styles.statusText, { color: '#e65100' }]}>{pendingCount} {t('general.pendingSync')}</Text>
           </View>
         )}
       </View>
@@ -177,65 +168,77 @@ export default function SettingsScreen() {
       {/* Language */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
-        {LANGUAGES.map(({ key, label, flag }) => (
+        {LANGUAGES.map((l) => (
           <TouchableOpacity
-            key={key}
-            style={[styles.optionRow, language === key && styles.optionRowActive]}
-            onPress={() => handleLanguageChange(key)}
+            key={l.key}
+            style={[styles.optionRow, language === l.key && styles.optionRowActive]}
+            onPress={() => handleLanguageChange(l.key)}
           >
-            <Text style={styles.flagText}>{flag}</Text>
-            <Text style={[styles.optionText, language === key && styles.optionTextActive]}>
-              {label}
-            </Text>
-            {language === key && (
-              <Ionicons name="checkmark-circle" size={22} color="#1a6b3c" />
-            )}
+            <Text style={styles.flagText}>{l.flag}</Text>
+            <Text style={[styles.optionText, language === l.key && styles.optionTextActive]}>{l.label}</Text>
+            {language === l.key && <Ionicons name="checkmark-circle" size={22} color="#1a6b3c" />}
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Printer */}
+      {/* Bluetooth Printer */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('settings.printer')}</Text>
+        <TouchableOpacity style={styles.optionRow} onPress={handleStartScan}>
+          <Ionicons name="bluetooth" size={22} color="#1a6b3c" />
+          <Text style={styles.optionText}>{t('settings.printerConnect')}</Text>
+          <Ionicons name="scan-outline" size={20} color="#1a6b3c" />
+        </TouchableOpacity>
 
-        {connectedName ? (
+        {printerConnected && (
           <>
-            <View style={[styles.optionRow, { borderColor: '#1a6b3c', borderWidth: 2 }]}>
-              <Ionicons name="bluetooth" size={20} color="#1a6b3c" />
+            <View style={styles.optionRow}>
+              <Ionicons name="print" size={22} color="#1a6b3c" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.optionText, { color: '#1a6b3c', fontWeight: '700' }]}>
-                  {connectedName}
-                </Text>
-                <Text style={{ fontSize: 11, color: '#1a6b3c', marginTop: 2 }}>متصل ✓</Text>
+                <Text style={[styles.optionText, { color: '#1a6b3c', fontWeight: '700' }]}>{t('settings.printerConnected')}</Text>
+                {connectedName && <Text style={{ fontSize: 12, color: '#888' }}>{connectedName}</Text>}
               </View>
               <View style={[styles.statusDot, { backgroundColor: '#1a6b3c' }]} />
             </View>
-
             <TouchableOpacity style={styles.optionRow} onPress={handleTestPrint}>
-              <Ionicons name="print-outline" size={20} color="#1a6b3c" />
+              <Ionicons name="document-text-outline" size={22} color="#1a6b3c" />
               <Text style={styles.optionText}>{t('settings.testPrint')}</Text>
-              <Ionicons name="chevron-forward" size={18} color="#888" />
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.optionRow} onPress={handleDisconnect}>
-              <Ionicons name="close-circle-outline" size={20} color="#e53935" />
-              <Text style={[styles.optionText, { color: '#e53935' }]}>فصل الطابعة</Text>
+              <Ionicons name="close-circle-outline" size={22} color="#e53935" />
+              <Text style={[styles.optionText, { color: '#e53935' }]}>{t('settings.printerDisconnect')}</Text>
             </TouchableOpacity>
           </>
-        ) : (
-          <TouchableOpacity style={styles.optionRow} onPress={handleStartScan}>
-            <Ionicons name="bluetooth-outline" size={20} color="#1a6b3c" />
-            <Text style={styles.optionText}>بحث عن طابعة بلوتوث...</Text>
-            <Ionicons name="search" size={18} color="#888" />
-          </TouchableOpacity>
+        )}
+
+        {!printerConnected && (
+          <View style={styles.optionRow}>
+            <Ionicons name="print-outline" size={22} color="#888" />
+            <Text style={[styles.optionText, { color: '#888' }]}>{t('settings.printerDisconnected')}</Text>
+            <View style={[styles.statusDot, { backgroundColor: '#888' }]} />
+          </View>
         )}
       </View>
 
+      {/* Shop Info */}
+      {currentUser && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('settings.shopInfo')}</Text>
+          <View style={styles.optionRow}>
+            <Ionicons name="storefront-outline" size={22} color="#1a6b3c" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.optionText, { fontWeight: '700' }]}>{currentUser.shopName}</Text>
+              <Text style={{ fontSize: 12, color: '#888' }}>{currentUser.ownerName} - {currentUser.phone}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Logout */}
       <View style={styles.section}>
-        <TouchableOpacity style={[styles.optionRow, { borderColor: '#e53935', borderWidth: 1.5 }]} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#e53935" />
-          <Text style={[styles.optionText, { color: '#e53935' }]}>تسجيل الخروج</Text>
+        <TouchableOpacity style={styles.optionRow} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={22} color="#e53935" />
+          <Text style={[styles.optionText, { color: '#e53935' }]}>{t('settings.logout')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -252,9 +255,9 @@ export default function SettingsScreen() {
       <Modal visible={showScanModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>بحث عن طابعات</Text>
+            <Text style={styles.modalTitle}>{t('settings.scanning')}</Text>
             <Text style={{ fontSize: 12, color: '#888', textAlign: 'center', marginBottom: 16 }}>
-              قم بتوصيل الطابعة أولاً من إعدادات البلوتوث
+              {t('settings.scanningHint')}
             </Text>
 
             {scanning && (
@@ -298,7 +301,7 @@ export default function SettingsScreen() {
               style={styles.closeBtn}
               onPress={() => { setShowScanModal(false); }}
             >
-              <Text style={styles.closeBtnText}>إغلاق</Text>
+              <Text style={styles.closeBtnText}>{t('settings.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
