@@ -7,6 +7,7 @@ let currentLanguage: Language = 'ar';
 export function setLanguage(lang: Language) {
   currentLanguage = lang;
   const shouldRTL = lang === 'ar' || lang === 'ku';
+  // German is LTR like English
   if (I18nManager.isRTL !== shouldRTL) {
     I18nManager.forceRTL(shouldRTL);
     I18nManager.allowRTL(shouldRTL);

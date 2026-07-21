@@ -19,6 +19,7 @@ const LANGUAGES: { key: Language; label: string; flag: string }[] = [
   { key: 'ar', label: 'العربية', flag: '🇮🇶' },
   { key: 'ku', label: 'کوردی (سۆرانی)', flag: '🇸🇩' },
   { key: 'en', label: 'English', flag: '🇬🇧' },
+  { key: 'de', label: 'Deutsch', flag: '🇩🇪' },
 ];
 
 export default function SettingsScreen() {
@@ -53,8 +54,8 @@ export default function SettingsScreen() {
     setAppLanguage(lang);
     setI18nLanguage(lang);
     Alert.alert(
-      'تم تغيير اللغة',
-      'يجب إعادة تشغيل التطبيق لتطبيق التغييرات بالكامل\nLanguage changed. Please restart the app for full effect.',
+      t('general.languageChanged'),
+      t('general.restartRequired'),
       [{ text: 'OK' }]
     );
   };
@@ -259,13 +260,13 @@ export default function SettingsScreen() {
             {scanning && (
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
                 <ActivityIndicator size="small" color="#1a6b3c" />
-                <Text style={{ color: '#1a6b3c' }}>جاري البحث...</Text>
+                <Text style={{ color: '#1a6b3c' }}>{t('general.searching')}</Text>
               </View>
             )}
 
             {!scanning && foundDevices.length === 0 && (
               <Text style={{ textAlign: 'center', color: '#888', padding: 20 }}>
-                لم يتم العثور على طابعات. تأكد من تفعيل البلوتوث
+                {t('general.noPrinters')}
               </Text>
             )}
 

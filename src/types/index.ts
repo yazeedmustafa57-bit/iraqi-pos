@@ -48,4 +48,4 @@ export interface PendingSyncItem {
   retryCount: number;
 }
 
-export type Language = 'ar' | 'ku' | 'en';
+export type Language = 'ar' | 'ku' | 'en' | 'de';

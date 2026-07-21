@@ -236,9 +236,9 @@ export default function CartScreen() {
               <View style={styles.methodInfoRow}>
                 <Ionicons name="information-circle-outline" size={18} color="#555" />
                 <Text style={styles.methodInfoText}>
-                  {selectedMethod === 'zaincash' && 'سيتم توجيهك إلى تطبيق ZainCash'}
+                  {selectedMethod === 'zaincash' && t('payment.redirectZaincash')}
                   {selectedMethod === 'asia_hawala' && 'سيتم توجيهك إلى تطبيق آسيا هавالة'}
-                  {selectedMethod === 'fastpay' && 'سيتم توجيهك إلى تطبيق FastPay'}
+                  {selectedMethod === 'fastpay' && t('payment.redirectFastpay')}
                   {selectedMethod === 'credit_card' && 'اتصل بجهاز الدفع'}
                 </Text>
               </View>

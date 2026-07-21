@@ -11,13 +11,13 @@ import { formatIQD } from '../i18n';
 import { DailySummary, PaymentMethod, Transaction } from '../types';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 
-const PAYMENT_LABELS: Record<PaymentMethod, { ar: string; icon: string }> = {
-  cash: { ar: 'نقدي', icon: 'cash-outline' },
-  zaincash: { ar: 'ZainCash', icon: 'phone-portrait-outline' },
-  asia_hawala: { ar: 'آسيا هавالة', icon: 'wallet-outline' },
-  fastpay: { ar: 'FastPay', icon: 'flash-outline' },
-  credit_card: { ar: 'بطاقة ائتمان', icon: 'card-outline' },
-  fib: { ar: 'فيب FIB', icon: 'business-outline' },
+const PAYMENT_LABELS: Record<PaymentMethod, { ar: string; ku: string; en: string; de: string; icon: string }> = {
+  cash: { ar: 'نقدي', ku: 'ناقد', en: 'Cash', de: 'Bargeld', icon: 'cash-outline' },
+  zaincash: { ar: 'ZainCash', ku: 'ZainCash', en: 'ZainCash', de: 'ZainCash', icon: 'phone-portrait-outline' },
+  asia_hawala: { ar: 'آسيا هافالة', ku: 'ئاسیا هەڕالا', en: 'AsiaHawala', de: 'AsiaHawala', icon: 'wallet-outline' },
+  fastpay: { ar: 'FastPay', ku: 'FastPay', en: 'FastPay', de: 'FastPay', icon: 'flash-outline' },
+  credit_card: { ar: 'بطاقة ائتمان', ku: 'کارتی بانکی', en: 'Credit Card', de: 'Kreditkarte', icon: 'card-outline' },
+  fib: { ar: 'فيب FIB', ku: 'FIB', en: 'FIB Bank', de: 'FIB Bank', icon: 'business-outline' },
 };
 
 export default function SummaryScreen() {
@@ -96,7 +96,7 @@ export default function SummaryScreen() {
                       size={20}
                       color="#1a6b3c"
                     />
-                    <Text style={styles.methodName}>{PAYMENT_LABELS[method].ar}</Text>
+                    <Text style={styles.methodName}>{PAYMENT_LABELS[method]?.[lang] || PAYMENT_LABELS[method]?.en}</Text>
                   </View>
                   <View style={styles.methodRight}>
                     <Text style={styles.methodAmount}>{formatIQD(amount)}</Text>
@@ -114,7 +114,7 @@ export default function SummaryScreen() {
               <View key={tx.id} style={styles.txRow}>
                 <View style={styles.txLeft}>
                   <Text style={styles.txId}>#{tx.id.slice(0, 8)}</Text>
-                  <Text style={styles.txMethod}>{PAYMENT_LABELS[tx.paymentMethod]?.ar}</Text>
+                  <Text style={styles.txMethod}>{PAYMENT_LABELS[tx.paymentMethod]?.[lang] || PAYMENT_LABELS[tx.paymentMethod]?.en}</Text>
                 </View>
                 <View style={styles.txRight}>
                   <Text style={styles.txTotal}>{formatIQD(tx.total)}</Text>

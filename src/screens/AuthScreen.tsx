@@ -6,9 +6,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { registerUser, loginUser, hasAnyUser } from '../database/db';
 import { useAppStore } from '../stores/appStore';
+import { translations } from '../i18n/translations';
 
 export default function AuthScreen() {
-  const { setCurrentUser, setIsAuthenticated } = useAppStore();
+  const { setCurrentUser, setIsAuthenticated, language } = useAppStore();
+  const t = (key: string) => translations[language]?.[key] ?? key;
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(true);
 
@@ -37,23 +39,23 @@ export default function AuthScreen() {
 
   const handleRegister = async () => {
     if (!shopName.trim()) {
-      Alert.alert('خطأ', 'اسم المتجر مطلوب');
+      Alert.alert('خطأ', t('general.error') + ': Shop name required');
       return;
     }
     if (!ownerName.trim()) {
-      Alert.alert('خطأ', 'اسم صاحب المتجر مطلوب');
+      Alert.alert('خطأ', t('general.error') + ': Owner name required');
       return;
     }
     if (!phone.trim() || phone.trim().length < 10) {
-      Alert.alert('خطأ', 'رقم الهاتف غير صحيح (10 أرقام على الأقل)');
+      Alert.alert('خطأ', t('general.error') + ': Invalid phone number');
       return;
     }
     if (!pin || pin.length < 4) {
-      Alert.alert('خطأ', 'الـ PIN يجب أن يكون 4 أرقام على الأقل');
+      Alert.alert('خطأ', t('general.error') + ': PIN must be 4+ digits');
       return;
     }
     if (pin !== pinConfirm) {
-      Alert.alert('خطأ', 'الـ PIN غير متطابق');
+      Alert.alert('خطأ', t('general.error') + ': PINs do not match');
       return;
     }
 
@@ -63,7 +65,7 @@ export default function AuthScreen() {
       setIsAuthenticated(true);
     } catch (err: any) {
       if (String(err).includes('PHONE_EXISTS')) {
-        Alert.alert('خطأ', 'رقم الهاتف مسجل بالفعل');
+        Alert.alert('خطأ', t('general.error') + ': Phone already registered');
       } else {
         Alert.alert('خطأ', String(err));
       }
@@ -72,11 +74,11 @@ export default function AuthScreen() {
 
   const handleLogin = async () => {
     if (!phone.trim()) {
-      Alert.alert('خطأ', 'أدخل رقم الهاتف');
+      Alert.alert('خطأ', t('general.error') + ': Enter phone number');
       return;
     }
     if (!pin) {
-      Alert.alert('خطأ', 'أدخل الـ PIN');
+      Alert.alert('خطأ', t('general.error') + ': Enter PIN');
       return;
     }
 
@@ -86,7 +88,7 @@ export default function AuthScreen() {
         setCurrentUser(user);
         setIsAuthenticated(true);
       } else {
-        Alert.alert('خطأ', 'رقم الهاتف أو الـ PIN غير صحيح');
+        Alert.alert('خطأ', t('general.error') + ': Wrong phone or PIN');
       }
     } catch (err: any) {
       Alert.alert('خطأ', String(err));
@@ -176,7 +178,7 @@ export default function AuthScreen() {
           <View style={styles.pinRow}>
             <TextInput
               style={[styles.input, { flex: 1 }]}
-              placeholder={isLogin ? 'أدخل الـ PIN' : 'اختر PIN (4-6 أرقام)'}
+              placeholder={isLogin ? t('general.error') + ': Enter PIN' : 'اختر PIN (4-6 أرقام)'}
               placeholderTextColor="#aaa"
               keyboardType="number-pad"
               secureTextEntry={!showPin}
