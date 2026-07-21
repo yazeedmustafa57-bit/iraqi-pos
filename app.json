@@ -42,7 +42,7 @@
         "android.permission.RECORD_AUDIO",
         "ACCESS_FINE_LOCATION"
       ],
-      "privacyPolicyUrl": "https://yazeed5353.github.io/iraqi-pos/privacy-policy/",
+      "privacyPolicyUrl": "https://yazeedmustafa57-bit.github.io/iraqi-pos/privacy-policy/",
       "splash": {
         "image": "./assets/splash-icon.png",
         "resizeMode": "contain",
