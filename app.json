@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "كاشير POS",
+    "slug": "iraqi-pos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a6b3c"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.iraqi.pos",
+      "infoPlist": {
+        "NSCameraUsageDescription": "الكاميرا مطلوبة لمسح رموز الباركود",
+        "NSBluetoothAlwaysUsageDescription": "البلوتوث مطلوب لتوصيل طابعة الإيصالات",
+        "NSLocalNetworkUsageDescription": "الشبكة مطلوبة لمزامنة المدفوعات"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a6b3c"
+      },
+      "package": "com.iraqi.pos",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "BLUETOOTH",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_ADVERTISE",
+        "ACCESS_NETWORK_STATE",
+        "INTERNET",
+        "WAKE_LOCK",
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "privacyPolicyUrl": "https://yazeed5353.github.io/iraqi-pos/privacy-policy/",
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#1a6b3c"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "الكاميرا مطلوبة لمسح رموز الباركود"
+        }
+      ],
+      "expo-sqlite",
+      "react-native-ble-plx"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "63541eab-2a86-426b-859c-6db45b66e222"
+      }
+    },
+    "owner": "yazeed5353"
+  }
+}
