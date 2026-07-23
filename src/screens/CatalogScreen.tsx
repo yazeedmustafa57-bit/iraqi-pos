@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, Alert, RefreshControl,
+  TouchableOpacity, Alert, Platform, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +14,13 @@ import ProductCard from '../components/ProductCard';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 
 const CATEGORIES = ['all', 'food', 'drinks', 'snacks', 'household', 'electronics', 'other'];
+
+
+const _isWeb = Platform.OS === 'web';
+function showAlert(title: string, msg: string) {
+  if (_isWeb) window.alert(title + ': ' + msg);
+  else showAlert(title, msg);
+}
 
 export default function CatalogScreen() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -47,7 +54,7 @@ export default function CatalogScreen() {
 
   const handleProductPress = useCallback((product: Product) => {
     addItem(product);
-    Alert.alert(t('catalog.addedToCart'), product.name, [{ text: 'OK' }]);
+    showAlert(t('catalog.addedToCart'), product.name);
   }, [addItem, t]);
 
   const handleBarcodePress = () => {

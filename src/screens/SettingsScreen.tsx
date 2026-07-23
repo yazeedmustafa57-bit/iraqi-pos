@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Modal, FlatList, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView, Modal, FlatList, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../stores/appStore';
@@ -14,13 +14,33 @@ import {
 import { getPendingSyncItems } from '../database/db';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { Language } from '../types';
+import Svg, { Rect, Polygon, Circle, G } from 'react-native-svg';
 
-const LANGUAGES: { key: Language; label: string; flag: string }[] = [
+const KurdistanFlag = () => (
+  <Svg width={30} height={20} viewBox="0 0 240 160" style={{ borderRadius: 3 }}>
+    <Rect width="240" height="53.3" fill="#ED2024" />
+    <Rect y="53.3" width="240" height="53.3" fill="#FFFFFF" />
+    <Rect y="106.6" width="240" height="53.4" fill="#21B24B" />
+    <G transform="translate(120,80)">
+      <Circle cx="0" cy="0" r="18" fill="#F9DD16" />
+      <Polygon points="17.8,-2.6 42.0,0.0 17.8,2.8 40.1,12.4 16.2,7.9 34.7,23.7 13.1,12.3 26.2,32.8 8.9,15.6 15.3,39.1 3.9,17.6 3.1,41.9 -1.5,17.9 -9.3,40.9 -6.7,16.7 -21.0,36.4 -11.3,14.0 -30.8,28.6 -14.9,10.1 -37.8,18.2 -17.2,5.2 -41.5,6.3 -18.0,-0.1 -41.5,-6.3 -17.2,-5.4 -37.8,-18.2 -14.8,-10.2 -30.8,-28.6 -11.1,-14.1 -21.0,-36.4 -6.5,-16.8 -9.3,-40.9 -1.2,-18.0 3.1,-41.9 4.1,-17.5 15.3,-39.1 9.1,-15.5 26.2,-32.8 13.3,-12.2 34.7,-23.7 16.3,-7.7 40.1,-12.4" fill="#F9DD16" />
+    </G>
+  </Svg>
+);
+
+const LANGUAGES: { key: Language; label: string; flag: string | 'ku_flag' }[] = [
   { key: 'ar', label: 'العربية', flag: '🇮🇶' },
-  { key: 'ku', label: 'کوردی (سۆرانی)', flag: '🇸🇩' },
+  { key: 'ku', label: 'کوردی (سۆرانی)', flag: 'ku_flag' as any },
   { key: 'en', label: 'English', flag: '🇬🇧' },
   { key: 'de', label: 'Deutsch', flag: '🇩🇪' },
 ];
+
+
+const _isWeb = Platform.OS === 'web';
+function showAlert(title: string, msg: string) {
+  if (_isWeb) window.alert(title + ': ' + msg);
+  else showAlert(title, msg);
+}
 
 export default function SettingsScreen() {
   const { language, setLanguage: setAppLanguage, printerConnected, setPrinterConnected, setPrinterDeviceId, currentUser, setIsAuthenticated, setCurrentUser } = useAppStore();
@@ -52,48 +72,35 @@ export default function SettingsScreen() {
     if (lang === language) return;
     setAppLanguage(lang);
     setI18nLanguage(lang);
-    Alert.alert(
-      t('general.languageChanged'),
-      t('general.restartRequired'),
-      [{ text: 'OK' }]
-    );
+    showAlert(t('general.languageChanged'), t('general.restartRequired'));
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      t('settings.logout'),
-      t('settings.logoutConfirm'),
-      [
-        { text: t('general.cancel'), style: 'cancel' },
-        {
-          text: t('settings.logoutBtn'),
-          style: 'destructive',
-          onPress: () => {
-            setCurrentUser(null);
-            setIsAuthenticated(false);
-          },
-        },
-      ]
-    );
+    showAlert(t('settings.logout'), t('settings.logoutConfirm'));
   };
 
   const handleTestPrint = async () => {
     if (!isConnected()) {
-      Alert.alert(t('general.error'), t('settings.printerNotConnected'));
+      showAlert(t('general.error'), t('settings.printerNotConnected'));
       return;
     }
     try {
       await printTestPage();
-      Alert.alert('✅', t('settings.testPageSent'));
+      showAlert('✅', t('settings.testPageSent'));
     } catch (error: any) {
-      Alert.alert(t('general.error'), String(error?.message || error));
+      showAlert(t('general.error'), String(error?.message || error));
     }
   };
 
   const handleStartScan = async () => {
+    // On web, skip native Bluetooth permission check
+    if (Platform.OS === 'web') {
+      showAlert('Info', 'Bluetooth-Drucker ist nur in der Native-App verfügbar.');
+      return;
+    }
     const hasPerm = await requestBluetoothPermission();
     if (!hasPerm) {
-      Alert.alert(t('general.error'), t('settings.bluetoothPermissionRequired'));
+      showAlert(t('general.error'), t('settings.bluetoothPermissionRequired'));
       return;
     }
 
@@ -112,7 +119,7 @@ export default function SettingsScreen() {
         10000
       );
     } catch (err: any) {
-      Alert.alert(t('general.error'), String(err?.message || err));
+      showAlert(t('general.error'), String(err?.message || err));
     } finally {
       setScanning(false);
     }
@@ -126,9 +133,9 @@ export default function SettingsScreen() {
       setPrinterConnected(true);
       setPrinterDeviceId(device.id);
       setShowScanModal(false);
-      Alert.alert('✅', `${t('settings.printerConnected')}: ${device.name}`);
+      showAlert('✅', `${t('settings.printerConnected')}: ${device.name}`);
     } catch (err: any) {
-      Alert.alert(t('general.error'), String(err?.message || ''));
+      showAlert(t('general.error'), String(err?.message || ''));
     } finally {
       setConnecting(null);
     }
@@ -140,7 +147,7 @@ export default function SettingsScreen() {
       setConnectedName(null);
       setPrinterConnected(false);
       setPrinterDeviceId(null);
-      Alert.alert('✅', t('settings.printerDisconnectedOk'));
+      showAlert('✅', t('settings.printerDisconnectedOk'));
     } catch {}
   };
 
@@ -174,7 +181,7 @@ export default function SettingsScreen() {
             style={[styles.optionRow, language === l.key && styles.optionRowActive]}
             onPress={() => handleLanguageChange(l.key)}
           >
-            <Text style={styles.flagText}>{l.flag}</Text>
+            {l.key === 'ku' ? <KurdistanFlag /> : <Text style={styles.flagText}>{l.flag}</Text>}
             <Text style={[styles.optionText, language === l.key && styles.optionTextActive]}>{l.label}</Text>
             {language === l.key && <Ionicons name="checkmark-circle" size={22} color="#1a6b3c" />}
           </TouchableOpacity>

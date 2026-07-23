@@ -22,11 +22,14 @@ import { getDatabase, seedDemoProducts } from './src/database/db';
 import { formatIQD } from './src/i18n';
 import { syncPendingPayments } from './src/services/payments';
 import { ScannerAudioView } from './src/services/scannerSound';
+import { printReceiptWeb } from './src/services/receiptPrinter';
 import { translations } from './src/i18n/translations';
 
-// Force RTL for Arabic
-I18nManager.forceRTL(true);
-I18nManager.allowRTL(true);
+// Force RTL only on native (web handles direction via CSS)
+if (Platform.OS !== 'web') {
+  I18nManager.forceRTL(true);
+  I18nManager.allowRTL(true);
+}
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -72,7 +75,7 @@ function PaymentSuccessOverlay() {
   if (!show || !lastTx) return null;
 
   return (
-    <View style={styles.successOverlay}>
+    <View style={styles.successOverlay} pointerEvents="box-none">
       <View style={styles.successCard}>
         <View style={styles.successIcon}>
           <Ionicons name="checkmark-circle" size={56} color="#fff" />
@@ -88,6 +91,15 @@ function PaymentSuccessOverlay() {
             <Ionicons name="sync" size={14} color="#fff" />
             <Text style={styles.pendingText}>{t('general.pendingSync')}</Text>
           </View>
+        )}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity
+            style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#1a6b3c', borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            onPress={() => printReceiptWeb(lastTx, 'كاشير - POS')}
+          >
+            <Ionicons name="print" size={18} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>🖨️ Drucken</Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -166,8 +178,14 @@ export default function App() {
     init();
   }, []);
 
-  // Network monitoring
+  // Network monitoring (skip on web)
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      setIsOnline(navigator.onLine);
+      window.addEventListener('online', () => setIsOnline(true));
+      window.addEventListener('offline', () => setIsOnline(false));
+      return;
+    }
     const checkNetwork = async () => {
       try {
         const state = await Network.getNetworkStateAsync();
@@ -176,7 +194,6 @@ export default function App() {
         setIsOnline(false);
       }
     };
-
     checkNetwork();
     const interval = setInterval(checkNetwork, 5000);
     return () => clearInterval(interval);

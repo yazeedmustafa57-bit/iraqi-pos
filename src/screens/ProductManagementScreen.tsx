@@ -4,8 +4,20 @@ import {
   TextInput, Modal, Alert, ScrollView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+const isWebPS = Platform.OS === 'web';
+function showPSAlert(title: string, msg: string) { if (isWebPS) window.alert(title + ': ' + msg); else Alert.alert(title, msg); }
 import { useNavigation } from '@react-navigation/native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+const isWeb = Platform.OS === 'web';
+let CameraView: any = null;
+let useCameraPermissions: any = null;
+if (!isWeb) {
+  try {
+    const cam = require('expo-camera');
+    CameraView = cam.CameraView;
+    useCameraPermissions = cam.useCameraPermissions;
+  } catch {}
+}
 import { useAppStore } from '../stores/appStore';
 import { translations } from '../i18n/translations';
 import { formatIQD } from '../i18n';
@@ -13,6 +25,115 @@ import { getAllProducts, addProduct, updateProduct, deleteProduct } from '../dat
 import { Product } from '../types';
 
 const CATEGORIES = ['food', 'drinks', 'snacks', 'household', 'electronics', 'other'];
+
+// Web Camera Scanner for Product Management
+function WebCameraScannerForProduct({ visible, onScanned, onClose }: { visible: boolean; onScanned: (code: string) => void; onClose: () => void }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanningRef = useRef(true);
+  const timeoutRef = useRef<any>(null);
+  const [status, setStatus] = useState('starting');
+
+  useEffect(() => {
+    if (!visible) return;
+    scanningRef.current = true;
+    let cancelled = false;
+
+    async function start() {
+      try {
+        if (!('BarcodeDetector' in window)) { setStatus('error'); return; }
+        timeoutRef.current = setTimeout(() => { if (!cancelled) setStatus('error'); }, 8000);
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        });
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            const caps: any = track.getCapabilities ? track.getCapabilities() : {};
+            const adv: any[] = [];
+            if (caps.focusMode?.includes('continuous')) adv.push({ focusMode: 'continuous' });
+            if (caps.exposureMode?.includes('continuous')) adv.push({ exposureMode: 'continuous' });
+            if (adv.length > 0) await track.applyConstraints({ advanced: adv });
+          } catch {}
+        }
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('autoplay', 'true');
+        video.muted = true;
+        video.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;background:#000;';
+        if (containerRef.current) { containerRef.current.innerHTML = ''; containerRef.current.appendChild(video); }
+        await video.play();
+        if (cancelled) return;
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setStatus('active');
+
+        const detector = new (window as any).BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'],
+        });
+
+        async function scan() {
+          if (cancelled || !scanningRef.current) return;
+          try {
+            if (video.readyState >= 2) {
+              const barcodes = await detector.detect(video);
+              if (barcodes.length > 0 && barcodes[0].rawValue) {
+                scanningRef.current = false;
+                try { navigator.vibrate(50); } catch {}
+                onScanned(barcodes[0].rawValue);
+                return;
+              }
+            }
+          } catch {}
+          if (!cancelled && scanningRef.current) requestAnimationFrame(scan);
+        }
+        requestAnimationFrame(scan);
+      } catch { if (!cancelled) { if (timeoutRef.current) clearTimeout(timeoutRef.current); setStatus('error'); } }
+    }
+    start();
+    return () => {
+      cancelled = true; scanningRef.current = false;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
+      if (containerRef.current) containerRef.current.innerHTML = '';
+    };
+  }, [visible, onScanned]);
+
+  if (status === 'error') {
+    return (
+      <View style={styles.scannerNoAccess}>
+        <Ionicons name="camera-outline" size={48} color="#888" />
+        <Text style={styles.scannerNoAccessText}>Kamera nicht verfügbar. Barcode manuell eingeben.</Text>
+        <TouchableOpacity style={styles.scannerPermBtn} onPress={onClose}>
+          <Text style={styles.scannerPermBtnText}>Schließen</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <div ref={(el) => { containerRef.current = el as HTMLDivElement; }} style={{ width: '100%', height: '100%', position: 'relative' } as any} />
+      <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }]}>
+        <View style={styles.scanFrame} />
+      </View>
+      <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center' }}>
+        <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
+          <Text style={{ color: '#fff', fontSize: 14, textAlign: 'center' }}>
+            {status === 'starting' ? 'Kamera startet...' : 'Barcode vor die Kamera halten'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+
 
 export default function ProductManagementScreen() {
   const lang = useAppStore((s) => s.language);
@@ -26,7 +147,7 @@ export default function ProductManagementScreen() {
 
   // Barcode scanner state
   const [showScanner, setShowScanner] = useState(false);
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions ? useCameraPermissions() : [null, () => {}];
   const lastScanTime = useRef(0);
 
   // Form state
@@ -81,17 +202,18 @@ export default function ProductManagementScreen() {
   };
 
   const handleScanBarcode = async () => {
+    if (isWeb) { setShowScanner(true); return; }
     if (!cameraPermission) {
       const perm = await requestCameraPermission();
       if (!perm.granted) {
-        Alert.alert(t('general.error'), t('settings.bluetoothPermissionRequired'));
+        showPSAlert(t('general.error'), t('settings.bluetoothPermissionRequired'));
         return;
       }
     }
     if (!cameraPermission?.granted) {
       const perm = await requestCameraPermission();
       if (!perm.granted) {
-        Alert.alert(t('general.error'), t('settings.bluetoothPermissionRequired'));
+        showPSAlert(t('general.error'), t('settings.bluetoothPermissionRequired'));
         return;
       }
     }
@@ -108,12 +230,12 @@ export default function ProductManagementScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert(t('general.error'), t('pm.nameRequired'));
+      showPSAlert(t('general.error'), t('pm.nameRequired'));
       return;
     }
     const priceNum = parseInt(price.replace(/[^0-9]/g, ''), 10);
     if (!priceNum || priceNum <= 0) {
-      Alert.alert(t('general.error'), t('pm.priceInvalid'));
+      showPSAlert(t('general.error'), t('pm.priceInvalid'));
       return;
     }
     const stockNum = parseInt(stock.replace(/[^0-9]/g, ''), 10) || 0;
@@ -146,29 +268,35 @@ export default function ProductManagementScreen() {
     } catch (error: any) {
       const msg = String(error);
       if (msg.includes('UNIQUE')) {
-        Alert.alert(t('general.error'), t('pm.barcodeUsed'));
+        showPSAlert(t('general.error'), t('pm.barcodeUsed'));
       } else {
-        Alert.alert(t('general.error'), msg);
+        showPSAlert(t('general.error'), msg);
       }
     }
   };
 
   const handleDelete = (product: Product) => {
-    Alert.alert(
-      t('pm.deleteTitle'),
-      `${t('pm.deleteConfirm')} "${product.name}"?`,
-      [
-        { text: t('general.cancel'), style: 'cancel' },
-        {
-          text: t('pm.deleteBtn'),
-          style: 'destructive',
-          onPress: async () => {
-            await deleteProduct(product.id);
-            loadProducts();
+    if (isWebPS) {
+      if (window.confirm(t('pm.deleteConfirm') + ' "' + product.name + '"?')) {
+        deleteProduct(product.id).then(() => loadProducts());
+      }
+    } else {
+      Alert.alert(
+        t('pm.deleteTitle'),
+        `${t('pm.deleteConfirm')} "${product.name}"?`,
+        [
+          { text: t('general.cancel'), style: 'cancel' },
+          {
+            text: t('pm.deleteBtn'),
+            style: 'destructive',
+            onPress: async () => {
+              await deleteProduct(product.id);
+              loadProducts();
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const getCategoryLabel = (cat: string) => {
@@ -362,7 +490,13 @@ export default function ProductManagementScreen() {
             <View style={{ width: 28 }} />
           </View>
 
-          {cameraPermission?.granted ? (
+          {isWeb ? (
+            <WebCameraScannerForProduct
+              visible={showScanner}
+              onScanned={(code: string) => { setBarcode(code); setShowScanner(false); }}
+              onClose={() => setShowScanner(false)}
+            />
+          ) : cameraPermission?.granted ? (
             <CameraView
               style={styles.scannerCamera}
               barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'] }}
@@ -429,7 +563,7 @@ const styles = StyleSheet.create({
   productBarcode: { fontSize: 12, color: '#888' },
   productStock: { fontSize: 12, color: '#1a6b3c', fontWeight: '600' },
   stockZero: { color: '#e53935' },
-  deleteBtn: { padding: 8 },
+  deleteBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#ffebee", justifyContent: "center", alignItems: "center", },
   emptyContainer: { alignItems: 'center', marginTop: 60 },
   emptyText: { fontSize: 16, color: '#aaa', marginTop: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

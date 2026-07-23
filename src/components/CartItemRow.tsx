@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CartItem } from '../types';
 import { formatIQD } from '../i18n';
@@ -48,8 +48,9 @@ export default function CartItemRow({ item, onUpdateQuantity, onRemove }: Props)
       <TouchableOpacity
         style={styles.removeBtn}
         onPress={() => onRemove(item.product.id)}
+        activeOpacity={0.6}
       >
-        <Ionicons name="trash-outline" size={18} color="#e53935" />
+        <Ionicons name="trash" size={20} color="#e53935" />
       </TouchableOpacity>
     </View>
   );
@@ -89,9 +90,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   qtyBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#1a6b3c',
     justifyContent: 'center',
     alignItems: 'center',
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
   qtyText: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginHorizontal: 10,
+    marginHorizontal: 8,
     color: '#333',
     minWidth: 24,
     textAlign: 'center',
@@ -114,7 +115,12 @@ const styles = StyleSheet.create({
     color: '#1a6b3c',
   },
   removeBtn: {
-    padding: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginLeft: 6,
   },
 });

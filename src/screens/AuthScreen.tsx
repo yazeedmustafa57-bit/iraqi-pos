@@ -8,6 +8,15 @@ import { registerUser, loginUser, hasAnyUser } from '../database/db';
 import { useAppStore } from '../stores/appStore';
 import { translations } from '../i18n/translations';
 
+const isWeb = Platform.OS === 'web';
+function showAlert(title: string, message: string) {
+  if (isWeb) {
+    window.alert(title + ': ' + message);
+  } else {
+    Alert.alert(title, message);
+  }
+}
+
 export default function AuthScreen() {
   const { setCurrentUser, setIsAuthenticated, language } = useAppStore();
   const t = (key: string) => translations[language]?.[key] ?? key;
@@ -39,23 +48,23 @@ export default function AuthScreen() {
 
   const handleRegister = async () => {
     if (!shopName.trim()) {
-      Alert.alert(t('general.error'), t('auth.shopNameRequired'));
+      showAlert(t('general.error'), t('auth.shopNameRequired'));
       return;
     }
     if (!ownerName.trim()) {
-      Alert.alert(t('general.error'), t('auth.ownerNameRequired'));
+      showAlert(t('general.error'), t('auth.ownerNameRequired'));
       return;
     }
     if (!phone.trim() || phone.trim().length < 10) {
-      Alert.alert(t('general.error'), t('auth.invalidPhone'));
+      showAlert(t('general.error'), t('auth.invalidPhone'));
       return;
     }
     if (!pin || pin.length < 4) {
-      Alert.alert(t('general.error'), t('auth.pinTooShort'));
+      showAlert(t('general.error'), t('auth.pinTooShort'));
       return;
     }
     if (pin !== pinConfirm) {
-      Alert.alert(t('general.error'), t('auth.pinMismatch'));
+      showAlert(t('general.error'), t('auth.pinMismatch'));
       return;
     }
 
@@ -65,20 +74,20 @@ export default function AuthScreen() {
       setIsAuthenticated(true);
     } catch (err: any) {
       if (String(err).includes('PHONE_EXISTS')) {
-        Alert.alert(t('general.error'), t('auth.phoneExists'));
+        showAlert(t('general.error'), t('auth.phoneExists'));
       } else {
-        Alert.alert(t('general.error'), String(err));
+        showAlert(t('general.error'), String(err));
       }
     }
   };
 
   const handleLogin = async () => {
     if (!phone.trim()) {
-      Alert.alert(t('general.error'), t('auth.enterPhone'));
+      showAlert(t('general.error'), t('auth.enterPhone'));
       return;
     }
     if (!pin) {
-      Alert.alert(t('general.error'), t('auth.enterPin'));
+      showAlert(t('general.error'), t('auth.enterPin'));
       return;
     }
 
@@ -88,10 +97,10 @@ export default function AuthScreen() {
         setCurrentUser(user);
         setIsAuthenticated(true);
       } else {
-        Alert.alert(t('general.error'), t('auth.wrongCredentials'));
+        showAlert(t('general.error'), t('auth.wrongCredentials'));
       }
     } catch (err: any) {
-      Alert.alert(t('general.error'), String(err));
+      showAlert(t('general.error'), String(err));
     }
   };
 

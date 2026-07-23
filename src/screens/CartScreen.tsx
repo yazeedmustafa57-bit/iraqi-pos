@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Modal, Alert,
+  TextInput, Modal, Alert, ScrollView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +17,7 @@ import { PaymentMethod, Transaction } from '../types';
 import { generateId } from "../utils/uuid";
 import { getLocalDateTimeString } from "../utils/dateHelper";
 import { isConnected as isPrinterConnected, printReceipt } from "../services/bluetoothPrinter";
+import { generateReceiptHTML } from "../services/receiptPrinter";
 
 const PAYMENT_METHODS: { key: PaymentMethod; icon: string }[] = [
   { key: 'cash', icon: 'cash-outline' },
@@ -26,6 +27,13 @@ const PAYMENT_METHODS: { key: PaymentMethod; icon: string }[] = [
   { key: 'credit_card', icon: 'card-outline' },
   { key: 'fib', icon: 'business-outline' },
 ];
+
+
+const _isWeb = Platform.OS === 'web';
+function showAlert(title: string, msg: string) {
+  if (_isWeb) window.alert(title + ': ' + msg);
+  else showAlert(title, msg);
+}
 
 export default function CartScreen() {
   const { items, removeItem, updateQuantity, clearCart, getTotal, getItemCount } = useCartStore();
@@ -42,6 +50,8 @@ export default function CartScreen() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('cash');
   const [amountPaid, setAmountPaid] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptTx, setReceiptTx] = useState<Transaction | null>(null);
 
   const total = getTotal();
   const itemCount = getItemCount();
@@ -58,7 +68,7 @@ export default function CartScreen() {
 
   const handlePay = async () => {
     if (selectedMethod === 'cash' && paidAmount < total) {
-      Alert.alert(t('general.error'), t('cart.insufficient'));
+      showAlert(t('general.error'), t('cart.insufficient'));
       return;
     }
 
@@ -87,7 +97,7 @@ export default function CartScreen() {
         }
 
         if (!result.success && !result.pendingSync) {
-          Alert.alert(t('payment.failed'), result.error || '');
+          showAlert(t('payment.failed'), result.error || '');
           setProcessing(false);
           return;
         }
@@ -124,9 +134,15 @@ export default function CartScreen() {
       setAmountPaid('');
       setShowPaymentSuccess(true);
 
+      // Show receipt on web
+      if (Platform.OS === 'web') {
+        setReceiptTx(transaction);
+        setShowReceipt(true);
+      }
+
       setTimeout(() => setShowPaymentSuccess(false), 3000);
     } catch (error) {
-      Alert.alert(t('general.error'), String(error));
+      showAlert(t('general.error'), String(error));
     } finally {
       setProcessing(false);
     }
@@ -272,6 +288,95 @@ export default function CartScreen() {
           </View>
         </View>
       </Modal>
+      {/* Receipt Modal */}
+      {showReceipt && receiptTx && (
+        <Modal visible={showReceipt} transparent animationType="slide">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 0, maxHeight: '90%', overflow: 'hidden' }}>
+              {/* Receipt header */}
+              <View style={{ backgroundColor: '#1a6b3c', padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>🧾 {t('receipt.title')}</Text>
+                <TouchableOpacity onPress={() => setShowReceipt(false)}>
+                  <Ionicons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Receipt content */}
+              <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+                <Text style={{ textAlign: 'center', fontSize: 22, fontWeight: 'bold', color: '#1a6b3c', marginBottom: 4 }}>
+                  {currentUser?.shopName || 'كاشير - POS'}
+                </Text>
+                <Text style={{ textAlign: 'center', fontSize: 12, color: '#888', marginBottom: 12 }}>{t('auth.shopSubtitle')}</Text>
+                <View style={{ borderTopWidth: 2, borderTopColor: '#333', marginVertical: 8 }} />
+
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                  {(() => { const loc = lang === 'ar' || lang === 'ku' ? 'ar-IQ' : lang === 'de' ? 'de-DE' : 'en-US'; return `📅 ${new Date(receiptTx.createdAt).toLocaleDateString(loc)} ⏰ ${new Date(receiptTx.createdAt).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}`; })()}
+                </Text>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>
+                  🔖 {t('receipt.invoiceNo')}: {receiptTx.id.slice(0, 8).toUpperCase()}
+                </Text>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+                  💳 {receiptTx.paymentMethod.toUpperCase()}
+                </Text>
+
+                <View style={{ borderTopWidth: 1, borderTopColor: '#eee', marginVertical: 4 }} />
+
+                {(receiptTx.items as any[]).map((item: any, idx: number) => (
+                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                    <Text style={{ flex: 1, fontSize: 13, color: '#333' }}>{item.product.name} ×{item.quantity}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1a6b3c' }}>{formatIQD(item.subtotal)}</Text>
+                  </View>
+                ))}
+
+                <View style={{ borderTopWidth: 2, borderTopColor: '#333', marginVertical: 8 }} />
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>{t('receipt.total')}:</Text>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1a6b3c' }}>{formatIQD(receiptTx.total)}</Text>
+                </View>
+
+                {receiptTx.paymentMethod === 'cash' && (
+                  <>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 13, color: '#555' }}>{t('receipt.given')}:</Text>
+                      <Text style={{ fontSize: 13, color: '#555' }}>{formatIQD(receiptTx.amountPaid)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 13, color: '#555' }}>{t('receipt.change')}:</Text>
+                      <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#e65100' }}>{formatIQD(receiptTx.change)}</Text>
+                    </View>
+                  </>
+                )}
+
+                <View style={{ borderTopWidth: 1, borderTopColor: '#eee', marginVertical: 12 }} />
+                <Text style={{ textAlign: 'center', fontSize: 14, fontWeight: 'bold', color: '#1a6b3c' }}>{t('receipt.thankYou')}</Text>
+                <Text style={{ textAlign: 'center', fontSize: 10, color: '#aaa', marginTop: 8 }}>كاشير POS v1.0.0</Text>
+              </ScrollView>
+
+              {/* Print button */}
+              <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: '#eee', flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, padding: 14, backgroundColor: '#1a6b3c', borderRadius: 10, alignItems: 'center' }}
+                  onPress={() => {
+                    // Use browser print
+                    const html = generateReceiptHTML(receiptTx, currentUser?.shopName || 'كاشير - POS', lang);
+                    const w = window.open('', '_blank');
+                    if (w) { w.document.write(html); w.document.close(); setTimeout(() => { try { w.print(); } catch {} }, 500); }
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>🖨️ {t('receipt.print')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, padding: 14, backgroundColor: '#f0f0f0', borderRadius: 10, alignItems: 'center' }}
+                  onPress={() => setShowReceipt(false)}
+                >
+                  <Text style={{ color: '#333', fontWeight: '600', fontSize: 15 }}>{t('receipt.close')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
