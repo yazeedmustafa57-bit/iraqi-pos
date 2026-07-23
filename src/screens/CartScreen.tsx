@@ -248,15 +248,52 @@ export default function CartScreen() {
               </View>
             )}
 
-            {selectedMethod !== 'cash' && (
+            {selectedMethod !== 'cash' && selectedMethod !== 'credit_card' && (
+              <View style={{ backgroundColor: '#f0f8f0', borderRadius: 12, padding: 16, marginTop: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Ionicons name="information-circle-outline" size={20} color="#1a6b3c" />
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1a6b3c' }}>{t('payment.transferTo')}</Text>
+                </View>
+                {(() => {
+                  const accounts = currentUser?.paymentAccounts;
+                  const accountMap: Record<string, string | undefined> = {
+                    fib: accounts?.fib,
+                    zaincash: accounts?.zaincash,
+                    fastpay: accounts?.fastpay,
+                    asia_hawala: accounts?.asia_hawala,
+                  };
+                  const accountNumber = accountMap[selectedMethod];
+                  const methodLabels: Record<string, string> = {
+                    fib: 'FIB', zaincash: 'ZainCash', fastpay: 'FastPay', asia_hawala: 'AsiaHawala'
+                  };
+                  if (accountNumber) {
+                    return (
+                      <>
+                        <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333', textAlign: 'center', marginVertical: 8 }}>
+                          {accountNumber}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#888', textAlign: 'center' }}>
+                          {methodLabels[selectedMethod]} - {t('payment.accountNumber')}
+                        </Text>
+                      </>
+                    );
+                  } else {
+                    return (
+                      <Text style={{ fontSize: 13, color: '#888', textAlign: 'center', paddingVertical: 8 }}>
+                        {selectedMethod === 'zaincash' && t('payment.redirectZaincash')}
+                        {selectedMethod === 'asia_hawala' && t('payment.redirectAsiaHawala')}
+                        {selectedMethod === 'fastpay' && t('payment.redirectFastpay')}
+                        {selectedMethod === 'fib' && t('payment.redirectFib')}
+                      </Text>
+                    );
+                  }
+                })()}
+              </View>
+            )}
+            {selectedMethod === 'credit_card' && (
               <View style={styles.methodInfoRow}>
                 <Ionicons name="information-circle-outline" size={18} color="#555" />
-                <Text style={styles.methodInfoText}>
-                  {selectedMethod === 'zaincash' && t('payment.redirectZaincash')}
-                  {selectedMethod === 'asia_hawala' && t('payment.redirectAsiaHawala')}
-                  {selectedMethod === 'fastpay' && t('payment.redirectFastpay')}
-                  {selectedMethod === 'credit_card' && t('payment.credit_card')}
-                </Text>
+                <Text style={styles.methodInfoText}>{t('payment.credit_card')}</Text>
               </View>
             )}
 

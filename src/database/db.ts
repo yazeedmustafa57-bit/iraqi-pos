@@ -79,7 +79,14 @@ async function webSeedDemoProducts(): Promise<void> {
   for (const p of demos) await webAddProduct(p);
 }
 
-export interface User { id: string; shopName: string; ownerName: string; phone: string; pin: string; role: 'admin' | 'cashier'; createdAt: string; }
+export interface PaymentAccounts {
+  fib: string;
+  zaincash: string;
+  fastpay: string;
+  asia_hawala: string;
+}
+
+export interface User { id: string; shopName: string; ownerName: string; phone: string; pin: string; role: 'admin' | 'cashier'; createdAt: string; paymentAccounts?: PaymentAccounts; }
 
 async function webRegisterUser(shopName: string, ownerName: string, phone: string, pin: string): Promise<User> {
   const users = webGetStore<User>('iraqi_pos_users');
@@ -93,6 +100,15 @@ async function webLoginUser(phone: string, pin: string): Promise<User | null> {
   return webGetStore<User>('iraqi_pos_users').find(u => u.phone === phone && u.pin === pin) || null;
 }
 async function webHasAnyUser(): Promise<boolean> { return webGetStore<User>('iraqi_pos_users').length > 0; }
+async function webUpdatePaymentAccounts(userId: string, accounts: PaymentAccounts): Promise<void> {
+  const users = webGetStore<User>('iraqi_pos_users');
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx >= 0) { users[idx] = { ...users[idx], paymentAccounts: accounts }; webSetStore('iraqi_pos_users', users); }
+}
+async function webGetPaymentAccounts(userId: string): Promise<PaymentAccounts | null> {
+  const user = webGetStore<User>('iraqi_pos_users').find(u => u.id === userId);
+  return user?.paymentAccounts || null;
+}
 
 // ---- NATIVE: SQLite ----
 let db: any = null;
@@ -201,6 +217,23 @@ async function nativeHasAnyUser(): Promise<boolean> {
 }
 
 // ---- Export ----
+async function nativeUpdatePaymentAccounts(userId: string, accounts: PaymentAccounts): Promise<void> {
+  // Store in AsyncStorage for native
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const key = 'iraqi_pos_payment_accounts_' + userId;
+    await AsyncStorage.setItem(key, JSON.stringify(accounts));
+  } catch {}
+}
+async function nativeGetPaymentAccounts(userId: string): Promise<PaymentAccounts | null> {
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const key = 'iraqi_pos_payment_accounts_' + userId;
+    const data = await AsyncStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+}
+
 export async function getDatabase(): Promise<void> { if (!isWeb) await getNativeDatabase(); }
 export const getAllProducts = isWeb ? webGetAllProducts : nativeGetAllProducts;
 export const getProductsByCategory = isWeb ? webGetProductsByCategory : nativeGetProductsByCategory;
@@ -216,5 +249,7 @@ export const addPendingSync = isWeb ? webAddPendingSync : nativeAddPendingSync;
 export const removePendingSync = isWeb ? webRemovePendingSync : nativeRemovePendingSync;
 export const seedDemoProducts = isWeb ? webSeedDemoProducts : nativeSeedDemoProducts;
 export const registerUser = isWeb ? webRegisterUser : nativeRegisterUser;
+export const updatePaymentAccounts = isWeb ? webUpdatePaymentAccounts : nativeUpdatePaymentAccounts;
+export const getPaymentAccounts = isWeb ? webGetPaymentAccounts : nativeGetPaymentAccounts;
 export const loginUser = isWeb ? webLoginUser : nativeLoginUser;
 export const hasAnyUser = isWeb ? webHasAnyUser : nativeHasAnyUser;

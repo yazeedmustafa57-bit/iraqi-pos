@@ -11,7 +11,8 @@ import {
   isConnected, getConnectedPrinterName, printTestPage,
   PrinterDevice, requestBluetoothPermission,
 } from '../services/bluetoothPrinter';
-import { getPendingSyncItems } from '../database/db';
+import { getPendingSyncItems, updatePaymentAccounts, getPaymentAccounts } from '../database/db';
+import { TextInput } from 'react-native';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { Language } from '../types';
 import Svg, { Rect, Polygon, Circle, G } from 'react-native-svg';
@@ -55,6 +56,31 @@ export default function SettingsScreen() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [connectedName, setConnectedName] = useState<string | null>(null);
 
+  // Payment accounts state
+  const [paymentAccounts, setPaymentAccountsState] = useState({ fib: '', zaincash: '', fastpay: '', asia_hawala: '' });
+  const [savingAccounts, setSavingAccounts] = useState(false);
+
+  const loadPaymentAccounts = async () => {
+    if (!currentUser) return;
+    const accounts = await getPaymentAccounts(currentUser.id);
+    if (accounts) setPaymentAccountsState(accounts);
+  };
+
+  const handleSaveAccounts = async () => {
+    if (!currentUser) return;
+    setSavingAccounts(true);
+    try {
+      await updatePaymentAccounts(currentUser.id, paymentAccounts);
+      // Also update currentUser in store
+      setCurrentUser({ ...currentUser, paymentAccounts });
+      showAlert('✅', t('payment.accountsSaved'));
+    } catch (e: any) {
+      showAlert(t('general.error'), String(e?.message || e));
+    } finally {
+      setSavingAccounts(false);
+    }
+  };
+
   const checkPendingSync = async () => {
     const items = await getPendingSyncItems();
     setPendingCount(items.length);
@@ -62,6 +88,7 @@ export default function SettingsScreen() {
 
   React.useEffect(() => {
     checkPendingSync();
+    loadPaymentAccounts();
     if (isConnected()) {
       setConnectedName(getConnectedPrinterName());
       setPrinterConnected(true);
