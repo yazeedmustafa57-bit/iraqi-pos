@@ -116,7 +116,7 @@ export default function SettingsScreen() {
   const handleTestFIB = async () => {
     setFibTestStatus('testing');
     try {
-      const result = await testFIBConnection(fibForm);
+      const result = await testFIBConnection(fibForm, currentUser?.id || 'unknown');
       if (result.success) {
         setFibTestStatus('success');
         if (result.merchantInfo) {
