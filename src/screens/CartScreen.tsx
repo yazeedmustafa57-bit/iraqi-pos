@@ -15,8 +15,8 @@ import CartItemRow from '../components/CartItemRow';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { PaymentMethod, Transaction } from '../types';
 import { generateId } from "../utils/uuid";
-import { startPaymentPolling, stopPaymentPolling, confirmPaymentReceived, supportsAutoCheck, openPaymentApp, getPaymentMethodInfo } from '../services/paymentGateway';
-import { generateMerchantId } from '../utils/qrPayment';
+import { startPaymentPolling, stopPaymentPolling, confirmPaymentReceived, supportsAutoCheck, getPaymentMethodInfo } from '../services/paymentGateway';
+
 import { getLocalDateTimeString } from "../utils/dateHelper";
 import { isConnected as isPrinterConnected, printReceipt } from "../services/bluetoothPrinter";
 import { generateReceiptHTML } from "../services/receiptPrinter";
@@ -426,7 +426,7 @@ export default function CartScreen() {
               <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1a6b3c', textAlign: 'center' }}>{formatIQD(total)}</Text>
             </View>
 
-            {/* Payment Info + Open App Button */}
+            {/* Payment Provider Status */}
             {(() => {
               const accounts = currentUser?.paymentAccounts;
               const accountMap: Record<string, string | undefined> = {
@@ -457,32 +457,7 @@ export default function CartScreen() {
                       <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#333', letterSpacing: 3 }}>{phone}</Text>
                     </View>
 
-                    {/* Open Payment App Button */}
-                    <TouchableOpacity
-                      style={{ backgroundColor: methodInfo.color, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24, width: '100%', alignItems: 'center', marginBottom: 12 }}
-                      onPress={() => {
-                        openPaymentApp(selectedMethod, phone, total, currentUser?.shopName || 'POS', paymentTxId || '');
-                      }}
-                    >
-                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                        {methodInfo.icon} {t('payment.openApp')} {methodInfo.label}
-                      </Text>
-                    </TouchableOpacity>
 
-                    {/* API indicator */}
-                    {methodInfo.hasApi ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                        <Ionicons name="checkmark-circle" size={14} color="#1a6b3c" />
-                        <Text style={{ fontSize: 11, color: '#1a6b3c' }}>{t('payment.apiAvailable')}</Text>
-                      </View>
-                    ) : (
-                      <Text style={{ fontSize: 11, color: '#999', textAlign: 'center' }}>{t('payment.manualTransfer')}</Text>
-                    )}
-
-                    {/* Merchant ID */}
-                    <Text style={{ fontSize: 10, color: '#bbb', marginTop: 6 }}>
-                      🏪 {generateMerchantId(currentUser?.shopName || '', currentUser?.phone || '')}
-                    </Text>
                   </View>
                 );
               }
