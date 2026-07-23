@@ -2,8 +2,17 @@ import { FIBConfig } from '../stores/appStore';
 
 // ============================================================
 // FIB OFFICIAL API SERVICE
-// Architecture ready for real FIB integration
-// Replace endpoint paths when official documentation is received
+//
+// ⚠️  WICHTIG: Diese Datei enthält PLACEHOLDER-Endpunkte!
+//
+// Sobald die offizielle FIB-Dokumentation vorliegt, müssen
+// hier die exakten Endpunkte, Auth-Header und Request/Response-
+// Formate eingetragen werden.
+//
+// Derzeitige Platzhalter basieren auf typischen irakischen
+// Bank-API-Strukturen und sind NICHT funktionsfähig.
+//
+// Ansprechpartner FIB: business@fib.iq
 // ============================================================
 
 export interface FIBConnectionResult {
@@ -39,152 +48,121 @@ export interface FIBPaymentStatus {
 }
 
 // ============================================================
+// PLACEHOLDER VALIDATION
+// Prevents accidental API calls before real documentation
+// ============================================================
+function validateConfig(config: FIBConfig): string | null {
+  if (!config.enabled) return 'FIB is not enabled';
+  if (!config.baseUrl) return 'API Base URL is required';
+  if (!config.merchantId) return 'Merchant ID is required';
+  if (!config.apiKey) return 'API Key is required';
+  // When real FIB documentation is received, also validate:
+  // - URL format matches FIB specification
+  // - Auth method matches FIB requirement
+  return null;
+}
+
+// ============================================================
 // 1. TEST CONNECTION
-// Validates merchant credentials with FIB API
+//
+// PLACEHOLDER - Replace with actual FIB endpoint:
+// - Method: (as per FIB documentation)
+// - Auth: (as per FIB documentation)
+// - Request format: (as per FIB documentation)
+// - Response format: (as per FIB documentation)
 // ============================================================
 export async function testFIBConnection(config: FIBConfig): Promise<FIBConnectionResult> {
-  if (!config.baseUrl || !config.merchantId || !config.apiKey) {
-    return {
-      success: false,
-      message: 'Missing required fields: baseUrl, merchantId, apiKey',
-    };
+  const validationError = validateConfig(config);
+  if (validationError) {
+    return { success: false, message: validationError };
   }
 
-  try {
-    // Official FIB API endpoint for merchant validation
-    // TODO: Replace with actual FIB endpoint when documentation received
-    const response = await fetch(`${config.baseUrl}/merchant/validate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Merchant-Id': config.merchantId,
-        'X-Api-Key': config.apiKey,
-        'X-Api-Secret': config.secretKey,
-      },
-      body: JSON.stringify({
-        merchant_id: config.merchantId,
-      }),
-    });
+  // TODO: Replace this block with actual FIB API call
+  // Once FIB documentation is received:
+  //
+  // const response = await fetch(`${config.baseUrl}/ACTUAL_FIB_ENDPOINT`, {
+  //   method: 'ACTUAL_FIB_METHOD',
+  //   headers: {
+  //     // Exact headers as per FIB documentation
+  //     'Content-Type': 'application/json',
+  //     'Authorization': `Bearer ${config.apiKey}`,  // or however FIB authenticates
+  //     // ... other required headers
+  //   },
+  //   body: JSON.stringify({
+  //     // Exact request format as per FIB documentation
+  //   }),
+  // });
+  //
+  // Parse response according to FIB documentation
 
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        success: true,
-        message: 'Connection successful',
-        merchantInfo: {
-          merchantId: data.merchant_id || config.merchantId,
-          merchantName: data.merchant_name || 'Unknown',
-          accountStatus: data.status || 'active',
-        },
-      };
-    } else {
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        message: errorData.message || `HTTP ${response.status}: Connection failed`,
-      };
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      message: error.message || 'Network error - check connection and URL',
-    };
-  }
+  // PLACEHOLDER: Returns clear error until real integration
+  return {
+    success: false,
+    message: 'FIB API integration pending official documentation. Contact business@fib.iq for API access.',
+  };
 }
 
 // ============================================================
 // 2. CREATE PAYMENT
-// Initiates a payment request via FIB API
+//
+// PLACEHOLDER - Replace with actual FIB endpoint
 // ============================================================
 export async function createFIBPayment(
   config: FIBConfig,
   request: FIBPaymentRequest
 ): Promise<FIBPaymentResult> {
-  if (!config.enabled) {
-    return { success: false, error: 'FIB is not enabled' };
+  const validationError = validateConfig(config);
+  if (validationError) {
+    return { success: false, error: validationError };
   }
 
-  try {
-    // Official FIB API endpoint for creating payment
-    // TODO: Replace with actual FIB endpoint when documentation received
-    const response = await fetch(`${config.baseUrl}/payment/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Merchant-Id': config.merchantId,
-        'X-Api-Key': config.apiKey,
-        'X-Api-Secret': config.secretKey,
-      },
-      body: JSON.stringify({
-        merchant_id: config.merchantId,
-        amount: request.amount,
-        currency: request.currency || 'IQD',
-        order_id: request.orderId,
-        description: request.description,
-        customer_phone: request.customerPhone,
-        webhook_url: config.webhookUrl,
-      }),
-    });
+  // TODO: Replace with actual FIB payment creation
+  // Exact endpoint, auth, and request/response format
+  // must come from official FIB documentation
 
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        success: true,
-        paymentId: data.payment_id || data.id,
-        status: data.status || 'pending',
-      };
-    } else {
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        error: errorData.message || `HTTP ${response.status}`,
-      };
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Network error',
-    };
-  }
+  return {
+    success: false,
+    error: 'FIB API integration pending official documentation',
+  };
 }
 
 // ============================================================
 // 3. CHECK PAYMENT STATUS
-// Polls FIB API for payment confirmation
+//
+// PLACEHOLDER - Replace with actual FIB endpoint
 // ============================================================
 export async function checkFIBPaymentStatus(
   config: FIBConfig,
   paymentId: string
 ): Promise<FIBPaymentStatus> {
-  try {
-    // Official FIB API endpoint for payment status
-    // TODO: Replace with actual FIB endpoint when documentation received
-    const response = await fetch(`${config.baseUrl}/payment/status/${paymentId}`, {
-      method: 'GET',
-      headers: {
-        'X-Merchant-Id': config.merchantId,
-        'X-Api-Key': config.apiKey,
-      },
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        paymentId,
-        status: data.status || 'pending',
-        amount: data.amount || 0,
-        paidAt: data.paid_at,
-      };
-    }
-    return { paymentId, status: 'pending', amount: 0 };
-  } catch {
-    return { paymentId, status: 'pending', amount: 0 };
+  const validationError = validateConfig(config);
+  if (validationError) {
+    return { paymentId, status: 'failed', amount: 0 };
   }
+
+  // TODO: Replace with actual FIB status check
+  return { paymentId, status: 'pending', amount: 0 };
 }
 
 // ============================================================
-// 4. HANDLE WEBHOOK CALLBACK
-// Processes payment confirmation from FIB
+// 4. PARSE WEBHOOK CALLBACK
+//
+// PLACEHOLDER - Replace with actual FIB webhook format
+//
+// ⚠️  WEBHOOKS REQUIRE A BACKEND SERVER!
+//
+// Architecture:
+// ┌──────────────┐     ┌──────────────────┐     ┌─────────────┐
+// │  FIB Server  │────▶│  Backend Server   │────▶│  Your App   │
+// │  (Payment    │     │  (Public URL)     │     │  (Local)    │
+// │  confirmed)  │     │  /api/fib-webhook │     │             │
+// └──────────────┘     └──────────────────┘     └─────────────┘
+//
+// The backend server:
+// 1. Receives webhook from FIB
+// 2. Validates the signature (as per FIB documentation)
+// 3. Updates payment status in database
+// 4. Notifies the POS app (via WebSocket or polling)
 // ============================================================
 export function parseFIBWebhook(payload: any): {
   paymentId: string;
@@ -192,11 +170,15 @@ export function parseFIBWebhook(payload: any): {
   amount: number;
   transactionRef?: string;
 } | null {
+  // TODO: Replace with actual FIB webhook format
+  // Verify webhook signature as per FIB documentation
+  // Parse payload according to FIB specification
+
   try {
-    // TODO: Replace with actual FIB webhook format when documentation received
+    // PLACEHOLDER: Generic webhook parsing
     if (payload.status === 'paid' || payload.status === 'success') {
       return {
-        paymentId: payload.payment_id || payload.order_id,
+        paymentId: payload.payment_id || payload.order_id || '',
         status: 'paid',
         amount: payload.amount || 0,
         transactionRef: payload.transaction_ref || payload.reference,
@@ -204,7 +186,7 @@ export function parseFIBWebhook(payload: any): {
     }
     if (payload.status === 'failed' || payload.status === 'error') {
       return {
-        paymentId: payload.payment_id || payload.order_id,
+        paymentId: payload.payment_id || payload.order_id || '',
         status: 'failed',
         amount: payload.amount || 0,
       };
