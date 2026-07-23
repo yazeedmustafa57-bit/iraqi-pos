@@ -57,7 +57,7 @@ export default function SettingsScreen() {
   const [connectedName, setConnectedName] = useState<string | null>(null);
 
   // Payment accounts state
-  const [paymentAccounts, setPaymentAccountsState] = useState({ fib: '', zaincash: '', fastpay: '', asia_hawala: '' });
+  const [paymentAccounts, setPaymentAccountsState] = useState({ fib: '' });
   const [savingAccounts, setSavingAccounts] = useState(false);
 
   const loadPaymentAccounts = async () => {

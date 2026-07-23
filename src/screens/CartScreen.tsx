@@ -392,14 +392,7 @@ export default function CartScreen() {
 
             {/* Payment Provider Status */}
             {(() => {
-              const accounts = currentUser?.paymentAccounts;
-              const accountMap: Record<string, string | undefined> = {
-                fib: accounts?.fib,
-                zaincash: accounts?.zaincash,
-                fastpay: accounts?.fastpay,
-                asia_hawala: accounts?.asia_hawala,
-              };
-              const phone = accountMap[selectedMethod];
+              const phone = currentUser?.paymentAccounts?.fib;
               const methodInfo = getPaymentMethodInfo(selectedMethod);
               if (phone) {
                 return (

@@ -4,10 +4,7 @@ import { Platform } from 'react-native';
 
 const paymentLabels: Record<string, string> = {
   cash: '💵 Bargeld',
-  zaincash: '📱 ZainCash',
-  asia_hawala: '👛 AsiaHawala',
-  fastpay: '⚡ FastPay',
-  credit_card: '💳 Karte',
+
   fib: '🏦 FIB',
 };
 

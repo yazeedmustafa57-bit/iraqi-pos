@@ -81,9 +81,6 @@ async function webSeedDemoProducts(): Promise<void> {
 
 export interface PaymentAccounts {
   fib: string;
-  zaincash: string;
-  fastpay: string;
-  asia_hawala: string;
 }
 
 export interface User { id: string; shopName: string; ownerName: string; phone: string; pin: string; role: 'admin' | 'cashier'; createdAt: string; paymentAccounts?: PaymentAccounts; }

@@ -54,8 +54,6 @@ export async function generateQRCodeDataURL(
 }
 
 export const PAYMENT_METHOD_INFO: Record<string, { icon: string; color: string; label: string }> = {
+  cash: { icon: '💵', color: '#333', label: 'Bargeld' },
   fib: { icon: '🏦', color: '#1565C0', label: 'FIB' },
-  zaincash: { icon: '📱', color: '#ED1C24', label: 'ZainCash' },
-  fastpay: { icon: '⚡', color: '#FF9800', label: 'FastPay' },
-  asia_hawala: { icon: '👛', color: '#4CAF50', label: 'AsiaHawala' },
 };
