@@ -13,10 +13,6 @@ import ConnectivityIndicator from '../components/ConnectivityIndicator';
 
 const PAYMENT_LABELS: Record<PaymentMethod, { ar: string; ku: string; en: string; de: string; icon: string }> = {
   cash: { ar: 'نقدي', ku: 'ناقد', en: 'Cash', de: 'Bargeld', icon: 'cash-outline' },
-  zaincash: { ar: 'ZainCash', ku: 'ZainCash', en: 'ZainCash', de: 'ZainCash', icon: 'phone-portrait-outline' },
-  asia_hawala: { ar: 'آسيا هافالة', ku: 'ئاسیا هەڕالا', en: 'AsiaHawala', de: 'AsiaHawala', icon: 'wallet-outline' },
-  fastpay: { ar: 'FastPay', ku: 'FastPay', en: 'FastPay', de: 'FastPay', icon: 'flash-outline' },
-  credit_card: { ar: 'بطاقة ائتمان', ku: 'کارتی بانکی', en: 'Credit Card', de: 'Kreditkarte', icon: 'card-outline' },
   fib: { ar: 'فيب FIB', ku: 'FIB', en: 'FIB Bank', de: 'FIB Bank', icon: 'business-outline' },
 };
 

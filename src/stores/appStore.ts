@@ -49,18 +49,10 @@ export function calculateDailySummary(transactions: Transaction[]): DailySummary
 
   const salesByMethod: Record<PaymentMethod, number> = {
     cash: 0,
-    zaincash: 0,
-    asia_hawala: 0,
-    fastpay: 0,
-    credit_card: 0,
     fib: 0,
   };
   const transactionsByMethod: Record<PaymentMethod, number> = {
     cash: 0,
-    zaincash: 0,
-    asia_hawala: 0,
-    fastpay: 0,
-    credit_card: 0,
     fib: 0,
   };
 

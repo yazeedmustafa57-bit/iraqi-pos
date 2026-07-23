@@ -13,10 +13,7 @@ const CutPaper = GS + 'V' + '\x01';
 
 const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: 'نقدي / Cash',
-  zaincash: 'ZainCash',
-  asia_hawala: 'آسيا هавالة / AsiaHawala',
-  fastpay: 'FastPay',
-  credit_card: 'بطاقة ائتمان / Credit Card',
+
   fib: 'FIB Bank',
 };
 

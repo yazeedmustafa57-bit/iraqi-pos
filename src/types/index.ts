@@ -18,7 +18,7 @@ export interface CartItem {
   subtotal: number;
 }
 
-export type PaymentMethod = 'cash' | 'zaincash' | 'asia_hawala' | 'fastpay' | 'credit_card' | 'fib';
+export type PaymentMethod = 'cash' | 'fib';
 
 export interface Transaction {
   id: string;

@@ -13,7 +13,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let pollAttempts = 0;
 
 // ============================================================
-// PROVIDER STATUS: Only officially documented integrations
+// PROVIDER STATUS
 // ============================================================
 export interface PaymentProviderInfo {
   method: PaymentMethod;
@@ -21,117 +21,52 @@ export interface PaymentProviderInfo {
   icon: string;
   color: string;
   hasOfficialApi: boolean;
-  hasQrCode: boolean;
-  hasDeepLink: boolean;
-  apiDocsUrl: string;
-  registrationUrl: string;
+  status: 'ready' | 'api_required';
   requirements: string[];
-  status: 'ready' | 'api_required' | 'manual_only';
 }
 
 export const PAYMENT_PROVIDERS: Record<string, PaymentProviderInfo> = {
-  fib: {
-    method: 'fib',
-    label: 'FIB',
-    icon: '🏦',
-    color: '#1565C0',
-    hasOfficialApi: true,     // API exists for registered merchants
-    hasQrCode: false,
-    hasDeepLink: false,
-    apiDocsUrl: '',           // Only after merchant registration
-    registrationUrl: 'mailto:business@fib.iq',
-    requirements: ['Händlerkonto bei FIB', 'Merchant ID', 'API-Schlüssel'],
-    status: 'api_required',
-  },
-  zaincash: {
-    method: 'zaincash',
-    label: 'ZainCash',
-    icon: '📱',
-    color: '#ED1C24',
-    hasOfficialApi: true,     // Public API at developer.zaincash.iq
-    hasQrCode: true,          // QR via payment_url from API
-    hasDeepLink: true,        // payment_url opens ZainCash app
-    apiDocsUrl: 'https://developer.zaincash.iq',
-    registrationUrl: 'https://merchant.zaincash.iq',
-    requirements: ['Merchant-Registrierung', 'KYC-Dokumente', 'Merchant ID + Secret Key'],
-    status: 'ready',
-  },
-  fastpay: {
-    method: 'fastpay',
-    label: 'FastPay',
-    icon: '⚡',
-    color: '#FF9800',
-    hasOfficialApi: false,
-    hasQrCode: false,
-    hasDeepLink: false,
-    apiDocsUrl: '',
-    registrationUrl: '',
-    requirements: ['Keine öffentliche API bekannt'],
-    status: 'api_required',
-  },
-  asia_hawala: {
-    method: 'asia_hawala',
-    label: 'AsiaHawala',
-    icon: '👛',
-    color: '#4CAF50',
-    hasOfficialApi: false,
-    hasQrCode: false,
-    hasDeepLink: false,
-    apiDocsUrl: '',
-    registrationUrl: '',
-    requirements: ['Keine öffentliche API bekannt'],
-    status: 'manual_only',
-  },
   cash: {
     method: 'cash',
     label: 'Bargeld',
     icon: '💵',
     color: '#333',
     hasOfficialApi: false,
-    hasQrCode: false,
-    hasDeepLink: false,
-    apiDocsUrl: '',
-    registrationUrl: '',
-    requirements: [],
     status: 'ready',
+    requirements: [],
   },
-  credit_card: {
-    method: 'credit_card',
-    label: 'Kreditkarte',
-    icon: '💳',
-    color: '#666',
-    hasOfficialApi: false,
-    hasQrCode: false,
-    hasDeepLink: false,
-    apiDocsUrl: '',
-    registrationUrl: '',
-    requirements: ['Separater Kartenterminal nötig'],
-    status: 'manual_only',
+  fib: {
+    method: 'fib',
+    label: 'FIB',
+    icon: '🏦',
+    color: '#1565C0',
+    hasOfficialApi: true,
+    status: 'api_required',
+    requirements: ['Händlerkonto bei FIB', 'Merchant ID', 'API-Schlüssel'],
   },
 };
 
 // ============================================================
-// ZAINCASH OFFICIAL API
+// FIB OFFICIAL API (placeholder - needs real credentials)
 // ============================================================
-export interface ZainCashConfig {
+export interface FIBConfig {
   merchantId: string;
-  secretKey: string;
-  baseUrl: string; // https://api.zaincash.iq
+  apiKey: string;
+  baseUrl: string;
 }
 
-export async function createZainCashPayment(
-  config: ZainCashConfig,
+export async function createFIBPayment(
+  config: FIBConfig,
   amount: number,
   phoneNumber: string,
-  orderId: string,
-  description: string
-): Promise<{ success: boolean; paymentUrl?: string; paymentId?: string; error?: string }> {
+  orderId: string
+): Promise<{ success: boolean; paymentId?: string; error?: string }> {
   try {
     const response = await fetch(`${config.baseUrl}/api/v1/payment/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.secretKey}`,
+        'Authorization': `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
         merchant_id: config.merchantId,
@@ -139,52 +74,37 @@ export async function createZainCashPayment(
         currency: 'IQD',
         phone: phoneNumber,
         order_id: orderId,
-        description: description,
-        redirect_url: window.location.origin + '/payment-callback',
       }),
     });
 
     const data = await response.json();
-    if (data.status === 'success' || data.result?.status === 'success') {
-      return {
-        success: true,
-        paymentUrl: data.result?.payment_url || data.payment_url,
-        paymentId: data.result?.payment_id || data.payment_id,
-      };
+    if (data.status === 'success') {
+      return { success: true, paymentId: data.payment_id };
     }
-    return { success: false, error: data.message || data.error || 'Payment creation failed' };
+    return { success: false, error: data.message || 'Payment creation failed' };
   } catch (error: any) {
     return { success: false, error: error.message || 'Network error' };
   }
 }
 
-export async function checkZainCashPaymentStatus(
-  config: ZainCashConfig,
+export async function checkFIBPaymentStatus(
+  config: FIBConfig,
   paymentId: string
 ): Promise<{ status: 'pending' | 'paid' | 'failed'; amount?: number }> {
   try {
     const response = await fetch(`${config.baseUrl}/api/v1/payment/status/${paymentId}`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${config.secretKey}`,
-      },
+      headers: { 'Authorization': `Bearer ${config.apiKey}` },
     });
-
     const data = await response.json();
-    if (data.result?.status === 'paid' || data.status === 'paid') {
-      return { status: 'paid', amount: data.result?.amount || data.amount };
-    }
-    if (data.result?.status === 'failed' || data.status === 'failed') {
-      return { status: 'failed' };
-    }
-    return { status: 'pending' };
+    return { status: data.status || 'pending', amount: data.amount };
   } catch {
     return { status: 'pending' };
   }
 }
 
 // ============================================================
-// LOCAL PAYMENT STATUS (for manual payments)
+// LOCAL PAYMENT STATUS (for manual cash confirmation)
 // ============================================================
 export function confirmPaymentReceived(transactionId: string, amount: number): void {
   if (typeof window === 'undefined') return;
@@ -226,7 +146,7 @@ export function stopPaymentPolling(): void {
 }
 
 export function supportsAutoCheck(method: PaymentMethod): boolean {
-  return PAYMENT_PROVIDERS[method]?.status === 'ready';
+  return method === 'fib';
 }
 
 export function getPaymentMethodInfo(method: PaymentMethod): PaymentProviderInfo {
