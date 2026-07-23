@@ -252,7 +252,7 @@ export default function CartScreen() {
               <View style={{ backgroundColor: '#f0f8f0', borderRadius: 12, padding: 16, marginTop: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Ionicons name="information-circle-outline" size={20} color="#1a6b3c" />
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1a6b3c' }}>{t('payment.transferTo')}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1a6b3c' }}>{t('payment.payViaPhone')}</Text>
                 </View>
                 {(() => {
                   const accounts = currentUser?.paymentAccounts;
@@ -273,7 +273,7 @@ export default function CartScreen() {
                           {accountNumber}
                         </Text>
                         <Text style={{ fontSize: 12, color: '#888', textAlign: 'center' }}>
-                          {methodLabels[selectedMethod]} - {t('payment.accountNumber')}
+                          {methodLabels[selectedMethod]} - {t('payment.phoneNumber')}
                         </Text>
                       </>
                     );
