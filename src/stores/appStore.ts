@@ -3,6 +3,26 @@ import { Language, Transaction, DailySummary, PaymentMethod } from '../types';
 import { User } from '../database/db';
 import { getLocalDateString } from '../utils/dateHelper';
 
+export interface FIBConfig {
+  enabled: boolean;
+  merchantId: string;
+  apiKey: string;
+  secretKey: string;
+  webhookUrl: string;
+  sandboxMode: boolean;
+  baseUrl: string;
+}
+
+const defaultFIBConfig: FIBConfig = {
+  enabled: false,
+  merchantId: '',
+  apiKey: '',
+  secretKey: '',
+  webhookUrl: '',
+  sandboxMode: true,
+  baseUrl: '',
+};
+
 interface AppState {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -20,6 +40,8 @@ interface AppState {
   setCurrentUser: (user: User | null) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (auth: boolean) => void;
+  fibConfig: FIBConfig;
+  setFIBConfig: (config: FIBConfig) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -39,6 +61,8 @@ export const useAppStore = create<AppState>((set) => ({
   setCurrentUser: (user) => set({ currentUser: user }),
   isAuthenticated: false,
   setIsAuthenticated: (auth) => set({ isAuthenticated: auth }),
+  fibConfig: defaultFIBConfig,
+  setFIBConfig: (config) => set({ fibConfig: config }),
 }));
 
 export function calculateDailySummary(transactions: Transaction[]): DailySummary {

@@ -15,6 +15,7 @@ import { getPendingSyncItems, updatePaymentAccounts, getPaymentAccounts } from '
 import { TextInput } from 'react-native';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { Language } from '../types';
+import { FIBConfig } from '../stores/appStore';
 import Svg, { Rect, Polygon, Circle, G } from 'react-native-svg';
 
 const KurdistanFlag = () => (
@@ -60,6 +61,13 @@ export default function SettingsScreen() {
   const [paymentAccounts, setPaymentAccountsState] = useState({ fib: '' });
   const [savingAccounts, setSavingAccounts] = useState(false);
 
+  // FIB Config state
+  const fibConfig = useAppStore((s) => s.fibConfig);
+  const setFIBConfig = useAppStore((s) => s.setFIBConfig);
+  const [fibForm, setFibForm] = useState<FIBConfig>(fibConfig);
+  const [savingFIB, setSavingFIB] = useState(false);
+  const [fibTestStatus, setFibTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+
   const loadPaymentAccounts = async () => {
     if (!currentUser) return;
     const accounts = await getPaymentAccounts(currentUser.id);
@@ -79,6 +87,31 @@ export default function SettingsScreen() {
     } finally {
       setSavingAccounts(false);
     }
+  };
+
+  const handleSaveFIB = async () => {
+    setSavingFIB(true);
+    try {
+      setFIBConfig(fibForm);
+      showAlert('✅', t('payment.fibSaved'));
+    } catch (e: any) {
+      showAlert(t('general.error'), String(e?.message || e));
+    } finally {
+      setSavingFIB(false);
+    }
+  };
+
+  const handleTestFIB = async () => {
+    setFibTestStatus('testing');
+    // Placeholder: Test connection to FIB API
+    // In production: call FIB API health check endpoint
+    setTimeout(() => {
+      if (fibForm.baseUrl && fibForm.apiKey && fibForm.merchantId) {
+        setFibTestStatus('success');
+      } else {
+        setFibTestStatus('error');
+      }
+    }, 2000);
   };
 
   const checkPendingSync = async () => {
@@ -268,6 +301,146 @@ export default function SettingsScreen() {
         </View>
       )}
 
+
+      {/* FIB Configuration */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('payment.fibConfigTitle')}</Text>
+        <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
+          {/* Enable/Disable Toggle */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>🏦 FIB {t('payment.fibEnable')}</Text>
+              <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{t('payment.fibEnableDesc')}</Text>
+            </View>
+            <TouchableOpacity
+              style={{ backgroundColor: fibForm.enabled ? '#1a6b3c' : '#ddd', borderRadius: 20, width: 50, height: 28, justifyContent: 'center', alignItems: 'center' }}
+              onPress={() => setFibForm(p => ({ ...p, enabled: !p.enabled }))}
+            >
+              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', marginLeft: fibForm.enabled ? 12 : -12 }} />
+            </TouchableOpacity>
+          </View>
+
+          {fibForm.enabled && (
+            <>
+              {/* Sandbox Mode */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, backgroundColor: '#fff3e0', borderRadius: 8, padding: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#e65100' }}>⚠️ {t('payment.fibSandbox')}</Text>
+                  <Text style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{t('payment.fibSandboxDesc')}</Text>
+                </View>
+                <TouchableOpacity
+                  style={{ backgroundColor: fibForm.sandboxMode ? '#FF9800' : '#ddd', borderRadius: 20, width: 44, height: 24, justifyContent: 'center', alignItems: 'center' }}
+                  onPress={() => setFibForm(p => ({ ...p, sandboxMode: !p.sandboxMode }))}
+                >
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', marginLeft: fibForm.sandboxMode ? 10 : -10 }} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Base URL */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>{t('payment.fibBaseUrl')}</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+                  placeholder={fibForm.sandboxMode ? 'https://sandbox.fib.iq/api' : 'https://api.fib.iq/api'}
+                  value={fibForm.baseUrl}
+                  onChangeText={(v: string) => setFibForm(p => ({ ...p, baseUrl: v }))}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Merchant ID */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>{t('payment.fibMerchantId')}</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+                  placeholder="z.B. MERCHANT-12345"
+                  value={fibForm.merchantId}
+                  onChangeText={(v: string) => setFibForm(p => ({ ...p, merchantId: v }))}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* API Key */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>{t('payment.fibApiKey')}</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+                  placeholder={t('payment.fibApiKeyPlaceholder')}
+                  value={fibForm.apiKey}
+                  onChangeText={(v: string) => setFibForm(p => ({ ...p, apiKey: v }))}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                />
+              </View>
+
+              {/* Secret Key */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>{t('payment.fibSecretKey')}</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+                  placeholder={t('payment.fibSecretKeyPlaceholder')}
+                  value={fibForm.secretKey}
+                  onChangeText={(v: string) => setFibForm(p => ({ ...p, secretKey: v }))}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry
+                />
+              </View>
+
+              {/* Webhook URL */}
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>{t('payment.fibWebhookUrl')}</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+                  placeholder="https://deine-app.de/api/fib-callback"
+                  value={fibForm.webhookUrl}
+                  onChangeText={(v: string) => setFibForm(p => ({ ...p, webhookUrl: v }))}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Connection Status */}
+              <View style={{ backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: fibTestStatus === 'success' ? '#4CAF50' : fibTestStatus === 'error' ? '#e53935' : fibTestStatus === 'testing' ? '#FF9800' : '#ccc' }} />
+                  <Text style={{ fontSize: 13, color: '#555' }}>
+                    {fibTestStatus === 'idle' && t('payment.fibStatusIdle')}
+                    {fibTestStatus === 'testing' && t('payment.fibStatusTesting')}
+                    {fibTestStatus === 'success' && t('payment.fibStatusSuccess')}
+                    {fibTestStatus === 'error' && t('payment.fibStatusError')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Test Connection Button */}
+              <TouchableOpacity
+                style={{ backgroundColor: '#1565C0', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 12 }}
+                onPress={handleTestFIB}
+                disabled={fibTestStatus === 'testing'}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>
+                  {fibTestStatus === 'testing' ? '...' : t('payment.fibTestConnection')}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                style={{ backgroundColor: '#1a6b3c', borderRadius: 10, padding: 14, alignItems: 'center' }}
+                onPress={handleSaveFIB}
+                disabled={savingFIB}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>
+                  {savingFIB ? '...' : t('general.save')}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
 
       {/* Payment Accounts */}
       <View style={styles.section}>
