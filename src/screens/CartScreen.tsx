@@ -52,6 +52,10 @@ export default function CartScreen() {
   const [processing, setProcessing] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptTx, setReceiptTx] = useState<Transaction | null>(null);
+  const [paymentWaiting, setPaymentWaiting] = useState(false);
+  const [paymentTimer, setPaymentTimer] = useState(300);
+  const [paymentTxId, setPaymentTxId] = useState<string | null>(null);
+  const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const total = getTotal();
   const itemCount = getItemCount();
@@ -72,22 +76,37 @@ export default function CartScreen() {
       return;
     }
 
+    // For non-cash methods: show waiting screen first
+    if (selectedMethod !== 'cash') {
+      const txId = generateId();
+      setPaymentTxId(txId);
+      setPaymentWaiting(true);
+      setPaymentTimer(300);
+      setShowPaymentModal(false);
+      return;
+    }
+
+    // Cash: process immediately
+    await completePayment('cash', paidAmount, change);
+  };
+
+  const completePayment = async (method: PaymentMethod, amountPaidVal: number, changeVal: number) => {
     setProcessing(true);
     try {
-      const txId = generateId();
+      const txId = paymentTxId || generateId();
       const transaction: Transaction = {
         id: txId,
         items: [...items],
         total,
-        paymentMethod: selectedMethod,
-        amountPaid: selectedMethod === 'cash' ? paidAmount : total,
-        change: selectedMethod === 'cash' ? change : 0,
+        paymentMethod: method,
+        amountPaid: method === 'cash' ? amountPaidVal : total,
+        change: method === 'cash' ? changeVal : 0,
         status: 'completed',
         createdAt: getLocalDateTimeString(),
       };
 
-      if (selectedMethod !== 'cash') {
-        const result = await processPayment(selectedMethod, {
+      if (method !== 'cash') {
+        const result = await processPayment(method, {
           amount: total,
           transactionId: txId,
         }, isOnline);
@@ -99,13 +118,13 @@ export default function CartScreen() {
         if (!result.success && !result.pendingSync) {
           showAlert(t('payment.failed'), result.error || '');
           setProcessing(false);
+          setPaymentWaiting(false);
           return;
         }
       }
 
       await saveTransaction(transaction);
 
-      // Auto-print receipt if Bluetooth printer is connected
       if (isPrinterConnected()) {
         try {
           await printReceipt(transaction, currentUser?.shopName || 'كاشير - POS');
@@ -114,8 +133,6 @@ export default function CartScreen() {
         }
       }
 
-      // Update stock individually, wrapping each in try/catch so one failure
-      // doesn't crash the whole payment flow
       for (const item of items) {
         try {
           await updateProduct({
@@ -124,17 +141,17 @@ export default function CartScreen() {
           });
         } catch (stockError) {
           console.warn('Stock update failed for', item.product.id, stockError);
-          // Continue even if stock update fails - transaction is already saved
         }
       }
 
       setLastTransaction(transaction);
       clearCart();
       setShowPaymentModal(false);
+      setPaymentWaiting(false);
       setAmountPaid('');
       setShowPaymentSuccess(true);
+      setPaymentTxId(null);
 
-      // Show receipt on web
       if (Platform.OS === 'web') {
         setReceiptTx(transaction);
         setShowReceipt(true);
@@ -146,6 +163,34 @@ export default function CartScreen() {
     } finally {
       setProcessing(false);
     }
+  };
+
+  // Timer for payment waiting
+  React.useEffect(() => {
+    if (paymentWaiting && paymentTimer > 0) {
+      timerRef.current = setInterval(() => {
+        setPaymentTimer((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [paymentWaiting]);
+
+  const handleConfirmPaymentReceived = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    completePayment(selectedMethod, total, 0);
+  };
+
+  const handleCancelPaymentWaiting = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setPaymentWaiting(false);
+    setPaymentTimer(300);
+    setPaymentTxId(null);
   };
 
   return (
@@ -325,6 +370,80 @@ export default function CartScreen() {
           </View>
         </View>
       </Modal>
+      {/* Payment Waiting Modal */}
+      <Modal visible={paymentWaiting} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' }}>
+            {/* Spinner animation */}
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#e8f5e9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+              <Ionicons name="hourglass-outline" size={40} color="#1a6b3c" />
+            </View>
+
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 8 }}>{t('payment.waitingTitle')}</Text>
+            <Text style={{ fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 20 }}>{t('payment.waitingSubtitle')}</Text>
+
+            {/* Amount */}
+            <View style={{ backgroundColor: '#f0f8f0', borderRadius: 12, padding: 16, width: '100%', marginBottom: 16 }}>
+              <Text style={{ fontSize: 13, color: '#888', textAlign: 'center', marginBottom: 4 }}>{t('cart.total')}</Text>
+              <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1a6b3c', textAlign: 'center' }}>{formatIQD(total)}</Text>
+            </View>
+
+            {/* Phone number */}
+            {(() => {
+              const accounts = currentUser?.paymentAccounts;
+              const accountMap: Record<string, string | undefined> = {
+                fib: accounts?.fib,
+                zaincash: accounts?.zaincash,
+                fastpay: accounts?.fastpay,
+                asia_hawala: accounts?.asia_hawala,
+              };
+              const phone = accountMap[selectedMethod];
+              const methodLabels: Record<string, string> = {
+                fib: 'FIB', zaincash: 'ZainCash', fastpay: 'FastPay', asia_hawala: 'AsiaHawala'
+              };
+              if (phone) {
+                return (
+                  <View style={{ backgroundColor: '#fff3e0', borderRadius: 12, padding: 16, width: '100%', marginBottom: 16 }}>
+                    <Text style={{ fontSize: 12, color: '#888', textAlign: 'center', marginBottom: 4 }}>{t('payment.payViaPhone')} {methodLabels[selectedMethod]}</Text>
+                    <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333', textAlign: 'center', letterSpacing: 1 }}>{phone}</Text>
+                  </View>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Timer */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <Ionicons name="time-outline" size={20} color={paymentTimer > 60 ? '#1a6b3c' : '#e53935'} />
+              <Text style={{ fontSize: 24, fontWeight: 'bold', color: paymentTimer > 60 ? '#1a6b3c' : '#e53935' }}>
+                {Math.floor(paymentTimer / 60)}:{(paymentTimer % 60).toString().padStart(2, '0')}
+              </Text>
+            </View>
+
+            {paymentTimer === 0 && (
+              <Text style={{ fontSize: 13, color: '#e53935', marginBottom: 12 }}>{t('payment.timeout')}</Text>
+            )}
+
+            {/* Confirm button */}
+            <TouchableOpacity
+              style={{ backgroundColor: '#1a6b3c', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 32, width: '100%', alignItems: 'center', marginBottom: 10 }}
+              onPress={handleConfirmPaymentReceived}
+            >
+              <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{t('payment.confirmReceived')}</Text>
+            </TouchableOpacity>
+
+            {/* Cancel button */}
+            <TouchableOpacity
+              style={{ paddingVertical: 12, paddingHorizontal: 20 }}
+              onPress={handleCancelPaymentWaiting}
+            >
+              <Text style={{ color: '#999', fontSize: 14 }}>{t('general.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Receipt Modal */}
       {showReceipt && receiptTx && (
         <Modal visible={showReceipt} transparent animationType="slide">
