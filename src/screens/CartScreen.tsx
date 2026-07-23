@@ -16,6 +16,7 @@ import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { PaymentMethod, Transaction } from '../types';
 import { generateId } from "../utils/uuid";
 import { startPaymentPolling, stopPaymentPolling, confirmPaymentReceived, supportsAutoCheck } from '../services/paymentGateway';
+import { generateQRCodeDataURL, generateMerchantId, PAYMENT_METHOD_INFO } from '../utils/qrPayment';
 import { getLocalDateTimeString } from "../utils/dateHelper";
 import { isConnected as isPrinterConnected, printReceipt } from "../services/bluetoothPrinter";
 import { generateReceiptHTML } from "../services/receiptPrinter";
@@ -56,6 +57,7 @@ export default function CartScreen() {
   const [paymentWaiting, setPaymentWaiting] = useState(false);
   const [paymentTimer, setPaymentTimer] = useState(300);
   const [paymentTxId, setPaymentTxId] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const total = getTotal();
@@ -82,6 +84,25 @@ export default function CartScreen() {
       const txId = generateId();
       setPaymentTxId(txId);
       setPaymentWaiting(true);
+      setPaymentTimer(300);
+
+      // Generate QR code
+      const phone = currentUser?.paymentAccounts?.[selectedMethod as keyof typeof currentUser.paymentAccounts] || '';
+      if (phone) {
+        const merchantId = generateMerchantId(currentUser?.shopName || '', currentUser?.phone || '');
+        try {
+          const qr = await generateQRCodeDataURL({
+            method: selectedMethod,
+            phone,
+            amount: total,
+            currency: 'IQD',
+            shopName: currentUser?.shopName || 'POS',
+            shopId: merchantId,
+            transactionId: txId,
+          });
+          setQrDataUrl(qr);
+        } catch (e) { console.warn('QR generation failed:', e); }
+      }
       setPaymentTimer(300);
       setShowPaymentModal(false);
       return;
@@ -424,7 +445,7 @@ export default function CartScreen() {
               <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1a6b3c', textAlign: 'center' }}>{formatIQD(total)}</Text>
             </View>
 
-            {/* Phone number */}
+            {/* QR Code + Payment Info */}
             {(() => {
               const accounts = currentUser?.paymentAccounts;
               const accountMap: Record<string, string | undefined> = {
@@ -437,11 +458,34 @@ export default function CartScreen() {
               const methodLabels: Record<string, string> = {
                 fib: 'FIB', zaincash: 'ZainCash', fastpay: 'FastPay', asia_hawala: 'AsiaHawala'
               };
+              const methodInfo = PAYMENT_METHOD_INFO[selectedMethod] || { icon: '💳', color: '#666', label: selectedMethod };
               if (phone) {
                 return (
-                  <View style={{ backgroundColor: '#fff3e0', borderRadius: 12, padding: 16, width: '100%', marginBottom: 16 }}>
-                    <Text style={{ fontSize: 12, color: '#888', textAlign: 'center', marginBottom: 4 }}>{t('payment.payViaPhone')} {methodLabels[selectedMethod]}</Text>
-                    <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333', textAlign: 'center', letterSpacing: 1 }}>{phone}</Text>
+                  <View style={{ backgroundColor: '#f8f9fa', borderRadius: 16, padding: 20, width: '100%', marginBottom: 16, alignItems: 'center' }}>
+                    {/* QR Code */}
+                    {qrDataUrl ? (
+                      <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
+                        <img src={qrDataUrl} style={{ width: 200, height: 200, borderRadius: 8 }} alt="QR Code" />
+                      </View>
+                    ) : (
+                      <View style={{ width: 200, height: 200, backgroundColor: '#eee', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={{ color: '#999' }}>{t('payment.generatingQR')}</Text>
+                      </View>
+                    )}
+
+                    {/* Method badge */}
+                    <View style={{ backgroundColor: methodInfo.color, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 10 }}>
+                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>{methodInfo.icon} {methodLabels[selectedMethod]}</Text>
+                    </View>
+
+                    {/* Phone number */}
+                    <Text style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('payment.scanToPay')}</Text>
+                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', letterSpacing: 2 }}>{phone}</Text>
+
+                    {/* Merchant ID */}
+                    <Text style={{ fontSize: 10, color: '#aaa', marginTop: 6 }}>
+                      🏪 {generateMerchantId(currentUser?.shopName || '', currentUser?.phone || '')}
+                    </Text>
                   </View>
                 );
               }
