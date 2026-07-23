@@ -15,7 +15,8 @@ import { getPendingSyncItems, updatePaymentAccounts, getPaymentAccounts } from '
 import { TextInput } from 'react-native';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { Language } from '../types';
-import { FIBConfig } from '../stores/appStore';
+import { FIBConfig, loadFIBConfig, saveFIBConfig } from '../stores/appStore';
+
 import Svg, { Rect, Polygon, Circle, G } from 'react-native-svg';
 
 const KurdistanFlag = () => (
@@ -89,9 +90,19 @@ export default function SettingsScreen() {
     }
   };
 
+  // Load FIB config when user logs in
+  React.useEffect(() => {
+    if (currentUser) {
+      const config = loadFIBConfig(currentUser.id);
+      setFibForm(config);
+    }
+  }, [currentUser?.id]);
+
   const handleSaveFIB = async () => {
+    if (!currentUser) return;
     setSavingFIB(true);
     try {
+      saveFIBConfig(currentUser.id, fibForm);
       setFIBConfig(fibForm);
       showAlert('✅', t('payment.fibSaved'));
     } catch (e: any) {

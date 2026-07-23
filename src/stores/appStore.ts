@@ -23,6 +23,25 @@ const defaultFIBConfig: FIBConfig = {
   baseUrl: '',
 };
 
+// Per-user FIB config storage
+function getStorageKey(userId: string): string {
+  return `iraqi_pos_fib_config_${userId}`;
+}
+
+export function loadFIBConfig(userId: string): FIBConfig {
+  if (typeof window === 'undefined') return defaultFIBConfig;
+  try {
+    const stored = localStorage.getItem(getStorageKey(userId));
+    if (stored) return { ...defaultFIBConfig, ...JSON.parse(stored) };
+  } catch {}
+  return defaultFIBConfig;
+}
+
+export function saveFIBConfig(userId: string, config: FIBConfig): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(getStorageKey(userId), JSON.stringify(config));
+}
+
 interface AppState {
   language: Language;
   setLanguage: (lang: Language) => void;
