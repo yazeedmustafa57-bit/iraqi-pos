@@ -268,6 +268,63 @@ export default function SettingsScreen() {
         </View>
       )}
 
+
+      {/* Payment Accounts */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('payment.accountsTitle')}</Text>
+        <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>🏦 FIB</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+              placeholder={t('payment.accountPlaceholder')}
+              value={paymentAccounts.fib}
+              onChangeText={(v: string) => setPaymentAccountsState(p => ({ ...p, fib: v }))}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>📱 ZainCash</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+              placeholder={t('payment.accountPlaceholder')}
+              value={paymentAccounts.zaincash}
+              onChangeText={(v: string) => setPaymentAccountsState(p => ({ ...p, zaincash: v }))}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>⚡ FastPay</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+              placeholder={t('payment.accountPlaceholder')}
+              value={paymentAccounts.fastpay}
+              onChangeText={(v: string) => setPaymentAccountsState(p => ({ ...p, fastpay: v }))}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>👛 AsiaHawala</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 14 }}
+              placeholder={t('payment.accountPlaceholder')}
+              value={paymentAccounts.asia_hawala}
+              onChangeText={(v: string) => setPaymentAccountsState(p => ({ ...p, asia_hawala: v }))}
+              keyboardType="numeric"
+            />
+          </View>
+          <TouchableOpacity
+            style={{ backgroundColor: '#1a6b3c', borderRadius: 10, padding: 14, alignItems: 'center' }}
+            onPress={handleSaveAccounts}
+            disabled={savingAccounts}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>
+              {savingAccounts ? '...' : t('general.save')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Logout */}
       <View style={styles.section}>
         <TouchableOpacity style={styles.optionRow} onPress={handleLogout}>
