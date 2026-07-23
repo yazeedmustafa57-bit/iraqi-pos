@@ -8,25 +8,112 @@ export interface PaymentStatus {
 }
 
 const POLL_INTERVAL = 5000;
-const MAX_POLL_ATTEMPTS = 60; // 5 minutes
+const MAX_POLL_ATTEMPTS = 60;
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let pollAttempts = 0;
 
-function getPaymentStoreKey(txId: string): string {
-  return `iraqi_pos_payment_${txId}`;
+// ============================================================
+// DEEP-LINK: Opens the payment app directly with pre-filled data
+// ============================================================
+export function openPaymentApp(
+  method: PaymentMethod,
+  phoneNumber: string,
+  amount: number,
+  shopName: string,
+  transactionId: string
+): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const amountStr = amount.toString();
+  const note = `${shopName} #${transactionId.slice(0, 8)}`;
+
+  // Android deep links for each payment app
+  const deepLinks: Record<string, string> = {
+    fib: `intent://pay#Intent;scheme=fib;package=com.fib.mobile;S.phone=${phoneNumber};S.amount=${amountStr};S.note=${encodeURIComponent(note)};end`,
+    zaincash: `intent://pay#Intent;scheme=zaincash;package=com.zaincash.app;S.phone=${phoneNumber};S.amount=${amountStr};S.note=${encodeURIComponent(note)};end`,
+    fastpay: `intent://pay#Intent;scheme=fastpay;package=com.fastpay.app;S.phone=${phoneNumber};S.amount=${amountStr};S.note=${encodeURIComponent(note)};end`,
+    asia_hawala: `intent://pay#Intent;scheme=asia;package=com.asiahawala.app;S.phone=${phoneNumber};S.amount=${amountStr};S.note=${encodeURIComponent(note)};end`,
+  };
+
+  // Fallback: Try opening via universal link or phone dialer
+  const fallbackLinks: Record<string, string> = {
+    fib: `tel:${phoneNumber}`,
+    zaincash: `tel:${phoneNumber}`,
+    fastpay: `tel:${phoneNumber}`,
+    asia_hawala: `tel:${phoneNumber}`,
+  };
+
+  try {
+    const link = deepLinks[method] || fallbackLinks[method];
+    if (link) {
+      window.location.href = link;
+      return true;
+    }
+  } catch (e) {
+    // Fallback to phone dialer
+    try {
+      window.location.href = fallbackLinks[method] || `tel:${phoneNumber}`;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
-// Simulated payment gateway - checks if payment was received
-// In production: replace with real FIB/ZainCash/FastPay/AsiaHawala API
-async function checkPaymentStatus(transactionId: string): Promise<PaymentStatus> {
+// ============================================================
+// ZAINCASH API INTEGRATION (if registered as merchant)
+// ============================================================
+export interface ZainCashConfig {
+  merchantId: string;
+  secretKey: string;
+  baseUrl: string;
+}
+
+export async function createZainCashPayment(
+  config: ZainCashConfig,
+  amount: number,
+  phoneNumber: string,
+  orderId: string
+): Promise<{ success: boolean; paymentUrl?: string; error?: string }> {
+  try {
+    // ZainCash API endpoint
+    const response = await fetch(`${config.baseUrl}/api/v1/payment/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.secretKey}`,
+      },
+      body: JSON.stringify({
+        merchant_id: config.merchantId,
+        amount: amount,
+        currency: 'IQD',
+        phone: phoneNumber,
+        order_id: orderId,
+        redirect_url: window.location.origin + '/payment-callback',
+      }),
+    });
+
+    const data = await response.json();
+    if (data.status === 'success') {
+      return { success: true, paymentUrl: data.payment_url };
+    }
+    return { success: false, error: data.message || 'Payment creation failed' };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================
+// POLLING: Check payment status
+// ============================================================
+export async function checkPaymentStatus(transactionId: string): Promise<PaymentStatus> {
   if (typeof window === 'undefined') {
     return { status: 'pending', transactionId, amount: 0 };
   }
 
-  // Check localStorage for payment confirmation
-  // In production: this would be a server API call
-  const stored = localStorage.getItem(getPaymentStoreKey(transactionId));
+  const stored = localStorage.getItem(`iraqi_pos_payment_${transactionId}`);
   if (stored) {
     try {
       return JSON.parse(stored) as PaymentStatus;
@@ -38,7 +125,6 @@ async function checkPaymentStatus(transactionId: string): Promise<PaymentStatus>
   return { status: 'pending', transactionId, amount: 0 };
 }
 
-// Simulate incoming payment (called by external system or webhook)
 export function confirmPaymentReceived(transactionId: string, amount: number): void {
   if (typeof window === 'undefined') return;
   const status: PaymentStatus = {
@@ -47,10 +133,9 @@ export function confirmPaymentReceived(transactionId: string, amount: number): v
     amount,
     paidAt: new Date().toISOString(),
   };
-  localStorage.setItem(getPaymentStoreKey(transactionId), JSON.stringify(status));
+  localStorage.setItem(`iraqi_pos_payment_${transactionId}`, JSON.stringify(status));
 }
 
-// Start polling for payment status
 export function startPaymentPolling(
   transactionId: string,
   amount: number,
@@ -73,7 +158,6 @@ export function startPaymentPolling(
 
     try {
       const result = await checkPaymentStatus(transactionId);
-
       if (result.status === 'paid') {
         stopPaymentPolling();
         onPaid();
@@ -81,14 +165,12 @@ export function startPaymentPolling(
         stopPaymentPolling();
         onFailed?.();
       }
-      // 'pending' -> continue polling
     } catch (err) {
       console.warn('Payment poll error:', err);
     }
   }, POLL_INTERVAL);
 }
 
-// Stop polling
 export function stopPaymentPolling(): void {
   if (pollTimer) {
     clearInterval(pollTimer);
@@ -97,12 +179,18 @@ export function stopPaymentPolling(): void {
   pollAttempts = 0;
 }
 
-// Get current poll time remaining (seconds)
-export function getRemainingTime(): number {
-  return Math.max(0, (MAX_POLL_ATTEMPTS - pollAttempts) * (POLL_INTERVAL / 1000));
-}
-
-// Check if FIB method supports auto-detection
 export function supportsAutoCheck(method: PaymentMethod): boolean {
   return ['fib', 'zaincash', 'fastpay', 'asia_hawala'].includes(method);
+}
+
+export function getPaymentMethodInfo(method: PaymentMethod): { icon: string; color: string; label: string; hasApi: boolean } {
+  const info: Record<string, { icon: string; color: string; label: string; hasApi: boolean }> = {
+    fib: { icon: '🏦', color: '#1565C0', label: 'FIB', hasApi: false },
+    zaincash: { icon: '📱', color: '#ED1C24', label: 'ZainCash', hasApi: true },
+    fastpay: { icon: '⚡', color: '#FF9800', label: 'FastPay', hasApi: false },
+    asia_hawala: { icon: '👛', color: '#4CAF50', label: 'AsiaHawala', hasApi: false },
+    cash: { icon: '💵', color: '#333', label: 'Cash', hasApi: false },
+    credit_card: { icon: '💳', color: '#666', label: 'Card', hasApi: false },
+  };
+  return info[method] || { icon: '💳', color: '#666', label: method, hasApi: false };
 }
