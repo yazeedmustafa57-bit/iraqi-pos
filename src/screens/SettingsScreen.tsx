@@ -15,6 +15,7 @@ import { getPendingSyncItems, updatePaymentAccounts, getPaymentAccounts } from '
 import { TextInput } from 'react-native';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { Language } from '../types';
+import { testFIBConnection } from '../services/fibApi';
 import { FIBConfig, loadFIBConfig, saveFIBConfig } from '../stores/appStore';
 
 import Svg, { Rect, Polygon, Circle, G } from 'react-native-svg';
@@ -114,15 +115,21 @@ export default function SettingsScreen() {
 
   const handleTestFIB = async () => {
     setFibTestStatus('testing');
-    // Placeholder: Test connection to FIB API
-    // In production: call FIB API health check endpoint
-    setTimeout(() => {
-      if (fibForm.baseUrl && fibForm.apiKey && fibForm.merchantId) {
+    try {
+      const result = await testFIBConnection(fibForm);
+      if (result.success) {
         setFibTestStatus('success');
+        if (result.merchantInfo) {
+          showAlert('✅', `${result.merchantInfo.merchantName}\n${t('payment.fibStatusSuccess')}`);
+        }
       } else {
         setFibTestStatus('error');
+        showAlert('❌', result.message);
       }
-    }, 2000);
+    } catch (e: any) {
+      setFibTestStatus('error');
+      showAlert('❌', e.message || 'Connection failed');
+    }
   };
 
   const checkPendingSync = async () => {
