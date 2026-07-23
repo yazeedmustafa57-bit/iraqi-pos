@@ -15,6 +15,7 @@ import CartItemRow from '../components/CartItemRow';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { PaymentMethod, Transaction } from '../types';
 import { generateId } from "../utils/uuid";
+import { startPaymentPolling, stopPaymentPolling, confirmPaymentReceived, supportsAutoCheck } from '../services/paymentGateway';
 import { getLocalDateTimeString } from "../utils/dateHelper";
 import { isConnected as isPrinterConnected, printReceipt } from "../services/bluetoothPrinter";
 import { generateReceiptHTML } from "../services/receiptPrinter";
@@ -165,7 +166,36 @@ export default function CartScreen() {
     }
   };
 
-  // Timer for payment waiting
+  // Auto-polling for payment status
+  React.useEffect(() => {
+    if (paymentWaiting && paymentTxId && supportsAutoCheck(selectedMethod)) {
+      startPaymentPolling(
+        paymentTxId,
+        total,
+        selectedMethod,
+        () => {
+          // Payment received -> auto-confirm
+          setPaymentTimer(0);
+          completePayment(selectedMethod, total, 0);
+        },
+        () => {
+          // Payment failed
+          setPaymentWaiting(false);
+          setPaymentTxId(null);
+          showAlert(t('payment.failed'), '');
+        },
+        () => {
+          // Expired
+          setPaymentWaiting(false);
+          setPaymentTxId(null);
+          showAlert(t('payment.timeout'), '');
+        }
+      );
+    }
+    return () => { stopPaymentPolling(); };
+  }, [paymentWaiting, paymentTxId]);
+
+  // Countdown timer for visual display
   React.useEffect(() => {
     if (paymentWaiting && paymentTimer > 0) {
       timerRef.current = setInterval(() => {
@@ -182,11 +212,13 @@ export default function CartScreen() {
   }, [paymentWaiting]);
 
   const handleConfirmPaymentReceived = () => {
+    stopPaymentPolling();
     if (timerRef.current) clearInterval(timerRef.current);
     completePayment(selectedMethod, total, 0);
   };
 
   const handleCancelPaymentWaiting = () => {
+    stopPaymentPolling();
     if (timerRef.current) clearInterval(timerRef.current);
     setPaymentWaiting(false);
     setPaymentTimer(300);
@@ -376,11 +408,15 @@ export default function CartScreen() {
           <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' }}>
             {/* Spinner animation */}
             <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#e8f5e9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
-              <Ionicons name="hourglass-outline" size={40} color="#1a6b3c" />
+              <Ionicons name="sync-outline" size={40} color="#1a6b3c" />
             </View>
 
             <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 8 }}>{t('payment.waitingTitle')}</Text>
-            <Text style={{ fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 20 }}>{t('payment.waitingSubtitle')}</Text>
+            <Text style={{ fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 8 }}>{t('payment.waitingSubtitle')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#1a6b3c" />
+                <Text style={{ fontSize: 12, color: '#1a6b3c', fontWeight: '600' }}>{t('payment.autoChecking')}</Text>
+              </View>
 
             {/* Amount */}
             <View style={{ backgroundColor: '#f0f8f0', borderRadius: 12, padding: 16, width: '100%', marginBottom: 16 }}>
@@ -430,7 +466,7 @@ export default function CartScreen() {
               onPress={handleConfirmPaymentReceived}
             >
               <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{t('payment.confirmReceived')}</Text>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{t('payment.confirmManual')}</Text>
             </TouchableOpacity>
 
             {/* Cancel button */}
