@@ -10,7 +10,6 @@ export interface QRPaymentData {
   transactionId: string;
 }
 
-// Generate unique merchant ID for each shop (based on shop name + phone)
 export function generateMerchantId(shopName: string, shopPhone: string): string {
   let hash = 0;
   const str = shopName + shopPhone;
@@ -22,36 +21,30 @@ export function generateMerchantId(shopName: string, shopPhone: string): string 
   return 'IQ-' + Math.abs(hash).toString(10).padStart(8, '0');
 }
 
-// Format payment data for QR code
-// Standard format: METHOD:PHONE:AMOUNT:CURRENCY:MERCHANT:SHOP:TXID
+// Universal QR format that works with Iraqi payment apps
+// FIB/ZainCash/FastPay all accept phone numbers as payment target
 export function formatQRPaymentData(data: QRPaymentData): string {
-  const parts = [
-    data.method.toUpperCase(),
-    data.phone,
-    data.amount.toString(),
-    data.currency,
-    data.shopId,
-    data.shopName,
-    data.transactionId,
-  ];
-  return parts.join(':');
+  // Option 1: Simple phone number (works with ALL payment apps when scanned)
+  // The amount is entered manually in the payment app
+  return data.phone;
 }
 
-// Generate QR code as data URL (for web)
+// Generate QR code as data URL
 export async function generateQRCodeDataURL(
   data: QRPaymentData,
   width: number = 250
 ): Promise<string> {
-  const qrText = formatQRPaymentData(data);
+  // QR contains just the phone number - universal compatibility
+  const qrText = data.phone;
   try {
     const dataURL = await QRCode.toDataURL(qrText, {
       width,
       margin: 2,
       color: {
-        dark: '#333333',
+        dark: '#1a1a1a',
         light: '#FFFFFF',
       },
-      errorCorrectionLevel: 'M',
+      errorCorrectionLevel: 'H',
     });
     return dataURL;
   } catch (err) {
@@ -60,31 +53,6 @@ export async function generateQRCodeDataURL(
   }
 }
 
-// Generate QR code as SVG string (for React Native)
-export async function generateQRCodeSVG(
-  data: QRPaymentData,
-  size: number = 200
-): Promise<string> {
-  const qrText = formatQRPaymentData(data);
-  try {
-    const svg = await QRCode.toString(qrText, {
-      type: 'svg',
-      width: size,
-      margin: 2,
-      color: {
-        dark: '#333333',
-        light: '#FFFFFF',
-      },
-      errorCorrectionLevel: 'M',
-    });
-    return svg;
-  } catch (err) {
-    console.error('QR generation failed:', err);
-    return '';
-  }
-}
-
-// Payment method labels for QR display
 export const PAYMENT_METHOD_INFO: Record<string, { icon: string; color: string; label: string }> = {
   fib: { icon: '🏦', color: '#1565C0', label: 'FIB' },
   zaincash: { icon: '📱', color: '#ED1C24', label: 'ZainCash' },

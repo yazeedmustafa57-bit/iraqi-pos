@@ -462,28 +462,39 @@ export default function CartScreen() {
               if (phone) {
                 return (
                   <View style={{ backgroundColor: '#f8f9fa', borderRadius: 16, padding: 20, width: '100%', marginBottom: 16, alignItems: 'center' }}>
+                    {/* Method badge */}
+                    <View style={{ backgroundColor: methodInfo.color, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 12 }}>
+                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>{methodInfo.icon} {methodLabels[selectedMethod]}</Text>
+                    </View>
+
+                    {/* Amount - BIG */}
+                    <View style={{ backgroundColor: '#e8f5e9', borderRadius: 12, padding: 12, width: '100%', marginBottom: 12, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>{t('cart.total')}</Text>
+                      <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1a6b3c' }}>{formatIQD(total)}</Text>
+                    </View>
+
                     {/* QR Code */}
                     {qrDataUrl ? (
-                      <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }}>
-                        <img src={qrDataUrl} style={{ width: 200, height: 200, borderRadius: 8 }} alt="QR Code" />
+                      <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
+                        <img src={qrDataUrl} style={{ width: 220, height: 220, borderRadius: 12 }} alt="QR" />
                       </View>
                     ) : (
-                      <View style={{ width: 200, height: 200, backgroundColor: '#eee', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                      <View style={{ width: 220, height: 220, backgroundColor: '#f0f0f0', borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
                         <Text style={{ color: '#999' }}>{t('payment.generatingQR')}</Text>
                       </View>
                     )}
 
-                    {/* Method badge */}
-                    <View style={{ backgroundColor: methodInfo.color, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 10 }}>
-                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>{methodInfo.icon} {methodLabels[selectedMethod]}</Text>
+                    {/* Instruction */}
+                    <Text style={{ fontSize: 13, color: '#555', textAlign: 'center', marginBottom: 8 }}>{t('payment.scanToPay')}</Text>
+
+                    {/* Phone number - clickable */}
+                    <View style={{ backgroundColor: '#fff3e0', borderRadius: 12, padding: 12, width: '100%', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>{t('payment.payViaPhone')} {methodLabels[selectedMethod]}</Text>
+                      <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#333', letterSpacing: 3 }}>{phone}</Text>
                     </View>
 
-                    {/* Phone number */}
-                    <Text style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('payment.scanToPay')}</Text>
-                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', letterSpacing: 2 }}>{phone}</Text>
-
                     {/* Merchant ID */}
-                    <Text style={{ fontSize: 10, color: '#aaa', marginTop: 6 }}>
+                    <Text style={{ fontSize: 10, color: '#bbb', marginTop: 4 }}>
                       🏪 {generateMerchantId(currentUser?.shopName || '', currentUser?.phone || '')}
                     </Text>
                   </View>
