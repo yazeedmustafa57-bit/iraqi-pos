@@ -2,6 +2,7 @@ import { Product, Transaction, PendingSyncItem, PaymentMethod } from '../types';
 import { generateId } from '../utils/uuid';
 import { getLocalDateString, getLocalDateTimeString } from '../utils/dateHelper';
 import { Platform } from 'react-native';
+import bcrypt from 'bcryptjs';
 
 const isWeb = Platform.OS === 'web';
 
@@ -80,27 +81,12 @@ async function webSeedDemoProducts(): Promise<void> {
 }
 
 // ---- USER TYPES ----
-export interface PaymentAccounts {
-  fib: string;
-}
-
-export interface SecurityQuestion {
-  question: string;
-  answer: string;
-}
-
+export interface PaymentAccounts { fib: string; }
+export interface SecurityQuestion { question: string; answer: string; }
 export interface User {
-  id: string;
-  shopName: string;
-  ownerName: string;
-  phone: string;
-  email?: string;
-  pin: string;         // Stored as SHA-256 hash
-  role: 'admin' | 'cashier';
-  createdAt: string;
-  paymentAccounts?: PaymentAccounts;
-  securityQuestion?: SecurityQuestion;
-  emailVerified?: boolean;
+  id: string; shopName: string; ownerName: string; phone: string; email?: string;
+  pin: string; role: 'admin' | 'cashier'; createdAt: string;
+  paymentAccounts?: PaymentAccounts; securityQuestion?: SecurityQuestion; emailVerified?: boolean;
 }
 
 // ---- WEB: User Functions ----
@@ -121,36 +107,40 @@ async function webRegisterUser(
   return user;
 }
 
+// Login with bcrypt.compare (handles both bcrypt hashes and plain text)
 async function webLoginUser(phone: string, pinHash: string): Promise<User | null> {
-  return webGetStore<User>('iraqi_pos_users').find(u => u.phone === phone && u.pin === pinHash) || null;
+  const users = webGetStore<User>('iraqi_pos_users');
+  const user = users.find(u => u.phone === phone);
+  if (!user) return null;
+
+  // Try bcrypt compare first
+  if (user.pin.startsWith('$2')) {
+    const match = await bcrypt.compare(pinHash, user.pin);
+    return match ? user : null;
+  }
+
+  // Plain text fallback (migration)
+  if (user.pin === pinHash) return user;
+
+  return null;
 }
 
-async function webHasAnyUser(): Promise<boolean> { return webGetStore<User>('iraqi_pos_users').length > 0; }
-
-// Plain-text login for migration (accounts created before bcrypt)
+// Plain text login (for migration)
 async function webLoginUserPlain(phone: string, pin: string): Promise<User | null> {
   return webGetStore<User>('iraqi_pos_users').find(u => u.phone === phone && u.pin === pin) || null;
 }
 
-// Update PIN hash for migration
-async function webUpdateUserPIN(userId: string, newPinHash: string): Promise<void> {
-  const users = webGetStore<User>('iraqi_pos_users');
-  const idx = users.findIndex(u => u.id === userId);
-  if (idx >= 0) { users[idx] = { ...users[idx], pin: newPinHash }; webSetStore('iraqi_pos_users', users); }
-}
+async function webHasAnyUser(): Promise<boolean> { return webGetStore<User>('iraqi_pos_users').length > 0; }
 
 async function webUpdatePaymentAccounts(userId: string, accounts: PaymentAccounts): Promise<void> {
   const users = webGetStore<User>('iraqi_pos_users');
   const idx = users.findIndex(u => u.id === userId);
   if (idx >= 0) { users[idx] = { ...users[idx], paymentAccounts: accounts }; webSetStore('iraqi_pos_users', users); }
 }
-
 async function webGetPaymentAccounts(userId: string): Promise<PaymentAccounts | null> {
   const user = webGetStore<User>('iraqi_pos_users').find(u => u.id === userId);
   return user?.paymentAccounts || null;
 }
-
-// Password reset via security question
 async function webResetPIN(phone: string, securityAnswer: string, newPinHash: string): Promise<boolean> {
   const users = webGetStore<User>('iraqi_pos_users');
   const user = users.find(u => u.phone === phone);
@@ -160,24 +150,23 @@ async function webResetPIN(phone: string, securityAnswer: string, newPinHash: st
   if (idx >= 0) { users[idx] = { ...users[idx], pin: newPinHash }; webSetStore('iraqi_pos_users', users); }
   return true;
 }
-
-// Get user by phone (for password reset)
 async function webGetUserByPhone(phone: string): Promise<User | null> {
   return webGetStore<User>('iraqi_pos_users').find(u => u.phone === phone) || null;
 }
-
-// Update email verification status
 async function webVerifyEmail(userId: string): Promise<void> {
   const users = webGetStore<User>('iraqi_pos_users');
   const idx = users.findIndex(u => u.id === userId);
   if (idx >= 0) { users[idx] = { ...users[idx], emailVerified: true }; webSetStore('iraqi_pos_users', users); }
 }
-
-// Update user email
 async function webUpdateUserEmail(userId: string, email: string): Promise<void> {
   const users = webGetStore<User>('iraqi_pos_users');
   const idx = users.findIndex(u => u.id === userId);
   if (idx >= 0) { users[idx] = { ...users[idx], email, emailVerified: false }; webSetStore('iraqi_pos_users', users); }
+}
+async function webUpdateUserPIN(userId: string, newPinHash: string): Promise<void> {
+  const users = webGetStore<User>('iraqi_pos_users');
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx >= 0) { users[idx] = { ...users[idx], pin: newPinHash }; webSetStore('iraqi_pos_users', users); }
 }
 
 // ---- NATIVE: SQLite ----
@@ -271,7 +260,6 @@ async function nativeGetPaymentAccounts(userId: string): Promise<PaymentAccounts
     return data ? JSON.parse(data) : null;
   } catch { return null; }
 }
-
 async function nativeRegisterUser(
   shopName: string, ownerName: string, phone: string, pinHash: string,
   email?: string, securityQuestion?: SecurityQuestion
@@ -286,11 +274,18 @@ async function nativeRegisterUser(
   return { id, shopName, ownerName, phone, email, pin: pinHash, role: 'admin', createdAt: getLocalDateTimeString(), securityQuestion, emailVerified: false };
 }
 
+// Native login with bcrypt.compare
 async function nativeLoginUser(phone: string, pinHash: string): Promise<User | null> {
   const d = await getNativeDatabase();
-  const row = await d.getFirstAsync('SELECT * FROM users WHERE phone=? AND pin=?', [phone, pinHash]);
-  if (row) currentUserId = row.id;
-  return row || null;
+  const user = await d.getFirstAsync('SELECT * FROM users WHERE phone=?', [phone]);
+  if (!user) return null;
+  if (user.pin.startsWith('$2')) {
+    const match = await bcrypt.compare(pinHash, user.pin);
+    if (match) { currentUserId = user.id; return user; }
+    return null;
+  }
+  if (user.pin === pinHash) { currentUserId = user.id; return user; }
+  return null;
 }
 
 async function nativeLoginUserPlain(phone: string, pin: string): Promise<User | null> {
@@ -299,18 +294,11 @@ async function nativeLoginUserPlain(phone: string, pin: string): Promise<User | 
   if (row) currentUserId = row.id;
   return row || null;
 }
-
-async function nativeUpdateUserPIN(userId: string, newPinHash: string): Promise<void> {
-  const d = await getNativeDatabase();
-  await d.runAsync('UPDATE users SET pin=? WHERE id=?', [newPinHash, userId]);
-}
-
 async function nativeHasAnyUser(): Promise<boolean> {
   const d = await getNativeDatabase();
   const row = await d.getFirstAsync('SELECT COUNT(*) as cnt FROM users');
   return row?.cnt > 0;
 }
-
 async function nativeResetPIN(phone: string, securityAnswer: string, newPinHash: string): Promise<boolean> {
   const d = await getNativeDatabase();
   const user = await d.getFirstAsync('SELECT * FROM users WHERE phone=?', [phone]);
@@ -320,20 +308,21 @@ async function nativeResetPIN(phone: string, securityAnswer: string, newPinHash:
   await d.runAsync('UPDATE users SET pin=? WHERE phone=?', [newPinHash, phone]);
   return true;
 }
-
 async function nativeGetUserByPhone(phone: string): Promise<User | null> {
   const d = await getNativeDatabase();
   return await d.getFirstAsync('SELECT * FROM users WHERE phone=?', [phone]) || null;
 }
-
 async function nativeVerifyEmail(userId: string): Promise<void> {
   const d = await getNativeDatabase();
   await d.runAsync('UPDATE users SET emailVerified=1 WHERE id=?', [userId]);
 }
-
 async function nativeUpdateUserEmail(userId: string, email: string): Promise<void> {
   const d = await getNativeDatabase();
   await d.runAsync('UPDATE users SET email=?, emailVerified=0 WHERE id=?', [email, userId]);
+}
+async function nativeUpdateUserPIN(userId: string, newPinHash: string): Promise<void> {
+  const d = await getNativeDatabase();
+  await d.runAsync('UPDATE users SET pin=? WHERE id=?', [newPinHash, userId]);
 }
 
 // ---- EXPORTS ----
@@ -353,12 +342,12 @@ export const removePendingSync = isWeb ? webRemovePendingSync : nativeRemovePend
 export const seedDemoProducts = isWeb ? webSeedDemoProducts : async () => {};
 export const registerUser = isWeb ? webRegisterUser : nativeRegisterUser;
 export const loginUser = isWeb ? webLoginUser : nativeLoginUser;
+export const loginUserPlain = isWeb ? webLoginUserPlain : nativeLoginUserPlain;
 export const hasAnyUser = isWeb ? webHasAnyUser : nativeHasAnyUser;
 export const updatePaymentAccounts = isWeb ? webUpdatePaymentAccounts : nativeUpdatePaymentAccounts;
 export const getPaymentAccounts = isWeb ? webGetPaymentAccounts : nativeGetPaymentAccounts;
 export const resetPIN = isWeb ? webResetPIN : nativeResetPIN;
 export const getUserByPhone = isWeb ? webGetUserByPhone : nativeGetUserByPhone;
 export const verifyEmail = isWeb ? webVerifyEmail : nativeVerifyEmail;
-export const loginUserPlain = isWeb ? webLoginUserPlain : nativeLoginUserPlain;
-export const updateUserPIN = isWeb ? webUpdateUserPIN : nativeUpdateUserPIN;
 export const updateUserEmail = isWeb ? webUpdateUserEmail : nativeUpdateUserEmail;
+export const updateUserPIN = isWeb ? webUpdateUserPIN : nativeUpdateUserPIN;

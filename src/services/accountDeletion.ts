@@ -23,8 +23,9 @@ export interface DeletionResult {
 export async function verifyPINForDeletion(
   phone: string, pin: string, storedHash: string
 ): Promise<boolean> {
-  const pinHash = await hashPIN(pin);
-  return pinHash === storedHash;
+  // Use bcrypt.compare - pin is plaintext, storedHash is the bcrypt hash
+  const bcrypt = await import('bcryptjs');
+  return await bcrypt.default.compare(pin, storedHash);
 }
 
 /**

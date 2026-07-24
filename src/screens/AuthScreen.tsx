@@ -115,10 +115,8 @@ export default function AuthScreen() {
     }
 
     try {
-      const pinHash = await hashPIN(pin);
-      
-      // Try login with hashed PIN first
-      let user = await loginUser(phone.trim(), pinHash);
+      // Pass plaintext pin - loginUser uses bcrypt.compare internally
+      let user = await loginUser(phone.trim(), pin);
       
       // Migration: If user exists but PIN doesn't match,
       // try plain-text comparison (for accounts created before bcrypt)
