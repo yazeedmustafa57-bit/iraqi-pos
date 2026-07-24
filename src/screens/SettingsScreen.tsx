@@ -156,7 +156,11 @@ export default function SettingsScreen() {
     try {
       const user = await getUserByPhone(currentUser.phone);
       if (user) {
-        const valid = await verifyPINForDeletion(currentUser.phone, deletePin, user.pin);
+        // Try bcrypt first, then plain-text (migration support)
+        let valid = await verifyPINForDeletion(currentUser.phone, deletePin, user.pin);
+        if (!valid && user.pin === deletePin) {
+          valid = true;
+        }
         if (valid) {
           setDeleteStep('confirm');
         } else {
