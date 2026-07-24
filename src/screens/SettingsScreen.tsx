@@ -561,7 +561,7 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <TouchableOpacity
           style={styles.optionRow}
-          onPress={() => navigation.navigate('Privacy')}
+          onPress={() => (navigation as any).getParent()?.navigate('Privacy')}
         >
           <Ionicons name="shield-checkmark-outline" size={22} color="#1565C0" />
           <Text style={styles.optionText}>{t('settings.privacy')}</Text>
