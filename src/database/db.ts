@@ -127,6 +127,18 @@ async function webLoginUser(phone: string, pinHash: string): Promise<User | null
 
 async function webHasAnyUser(): Promise<boolean> { return webGetStore<User>('iraqi_pos_users').length > 0; }
 
+// Plain-text login for migration (accounts created before bcrypt)
+async function webLoginUserPlain(phone: string, pin: string): Promise<User | null> {
+  return webGetStore<User>('iraqi_pos_users').find(u => u.phone === phone && u.pin === pin) || null;
+}
+
+// Update PIN hash for migration
+async function webUpdateUserPIN(userId: string, newPinHash: string): Promise<void> {
+  const users = webGetStore<User>('iraqi_pos_users');
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx >= 0) { users[idx] = { ...users[idx], pin: newPinHash }; webSetStore('iraqi_pos_users', users); }
+}
+
 async function webUpdatePaymentAccounts(userId: string, accounts: PaymentAccounts): Promise<void> {
   const users = webGetStore<User>('iraqi_pos_users');
   const idx = users.findIndex(u => u.id === userId);
@@ -281,6 +293,18 @@ async function nativeLoginUser(phone: string, pinHash: string): Promise<User | n
   return row || null;
 }
 
+async function nativeLoginUserPlain(phone: string, pin: string): Promise<User | null> {
+  const d = await getNativeDatabase();
+  const row = await d.getFirstAsync('SELECT * FROM users WHERE phone=? AND pin=?', [phone, pin]);
+  if (row) currentUserId = row.id;
+  return row || null;
+}
+
+async function nativeUpdateUserPIN(userId: string, newPinHash: string): Promise<void> {
+  const d = await getNativeDatabase();
+  await d.runAsync('UPDATE users SET pin=? WHERE id=?', [newPinHash, userId]);
+}
+
 async function nativeHasAnyUser(): Promise<boolean> {
   const d = await getNativeDatabase();
   const row = await d.getFirstAsync('SELECT COUNT(*) as cnt FROM users');
@@ -335,4 +359,6 @@ export const getPaymentAccounts = isWeb ? webGetPaymentAccounts : nativeGetPayme
 export const resetPIN = isWeb ? webResetPIN : nativeResetPIN;
 export const getUserByPhone = isWeb ? webGetUserByPhone : nativeGetUserByPhone;
 export const verifyEmail = isWeb ? webVerifyEmail : nativeVerifyEmail;
+export const loginUserPlain = isWeb ? webLoginUserPlain : nativeLoginUserPlain;
+export const updateUserPIN = isWeb ? webUpdateUserPIN : nativeUpdateUserPIN;
 export const updateUserEmail = isWeb ? webUpdateUserEmail : nativeUpdateUserEmail;

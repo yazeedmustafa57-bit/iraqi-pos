@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../stores/appStore';
-import { registerUser, loginUser, hasAnyUser, resetPIN, getUserByPhone, updateUserEmail, verifyEmail } from '../database/db';
+import { registerUser, loginUser, loginUserPlain, hasAnyUser, resetPIN, getUserByPhone, updateUserEmail, verifyEmail, updateUserPIN } from '../database/db';
 import { translations } from '../i18n/translations';
 import { hashPIN, verifyPIN, isAlreadyHashed } from '../utils/crypto';
 import { isLockedOut, recordFailedAttempt, clearLoginAttempts, getRemainingLockoutTime } from '../utils/crypto';
@@ -116,7 +116,22 @@ export default function AuthScreen() {
 
     try {
       const pinHash = await hashPIN(pin);
-      const user = await loginUser(phone.trim(), pinHash);
+      
+      // Try login with hashed PIN first
+      let user = await loginUser(phone.trim(), pinHash);
+      
+      // Migration: If user exists but PIN doesn't match,
+      // try plain-text comparison (for accounts created before bcrypt)
+      if (!user) {
+        const plainUser = await loginUserPlain(phone.trim(), pin);
+        if (plainUser) {
+          // Auto-migrate: re-hash and update PIN
+          const newHash = await hashPIN(pin);
+          await updateUserPIN(plainUser.id, newHash);
+          user = plainUser;
+        }
+      }
+      
       if (user) {
         clearLoginAttempts(phone);
         setCurrentUser(user);
