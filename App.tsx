@@ -15,6 +15,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import SummaryScreen from './src/screens/SummaryScreen';
 import BarcodeScannerScreen from './src/screens/BarcodeScannerScreen';
 import ProductManagementScreen from './src/screens/ProductManagementScreen';
+import PrivacyScreen from './src/screens/PrivacyScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { useAppStore } from './src/stores/appStore';
 import { useCartStore } from './src/stores/cartStore';
@@ -233,6 +234,11 @@ export default function App() {
             name="ProductManagement"
             component={ProductManagementScreen}
             options={{ presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen
+            name="Privacy"
+            component={PrivacyScreen}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
         <PaymentSuccessOverlay />

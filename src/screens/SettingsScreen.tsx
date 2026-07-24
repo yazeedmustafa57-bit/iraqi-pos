@@ -500,6 +500,18 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Privacy Policy */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.optionRow}
+          onPress={() => navigation.navigate('Privacy')}
+        >
+          <Ionicons name="shield-checkmark-outline" size={22} color="#1565C0" />
+          <Text style={styles.optionText}>{t('settings.privacy')}</Text>
+          <Ionicons name="chevron-forward" size={18} color="#ccc" />
+        </TouchableOpacity>
+      </View>
+
       {/* Logout */}
       <View style={styles.section}>
         <TouchableOpacity style={styles.optionRow} onPress={handleLogout}>
