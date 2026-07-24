@@ -1,53 +1,49 @@
 /**
  * Sichere PIN/Passwort-Verarbeitung
  * 
- * Verwendet SHA-256 Hashing für PINs.
- * PINs werden NIE im Klartext gespeichert.
+ * Verwendet bcrypt für PIN-Hashing.
+ * bcrypt ist speziell für Passwort-Hashing entwickelt:
+ * - Salting automatisch eingebaut
+ * - Adaptive Cost Factor (Work Factor)
+ * - Einweg-Hash (nicht umkehrbar)
+ * - Schutz gegen Rainbow Table Angriffe
+ * - Schutz gegen Timing Angriffe
  */
 
-// SHA-256 Hash (Web + Native)
-async function sha256(message: string): Promise<string> {
-  // Web: SubtleCrypto API
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-  
-  // Fallback: Simple hash (for environments without SubtleCrypto)
-  let hash = 0;
-  const salt = 'IRAQI_POS_SALT_2024'; // In production: unique per user
-  const salted = salt + message + salt;
-  for (let i = 0; i < salted.length; i++) {
-    const char = salted.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
-  }
-  // Convert to hex and pad
-  return Math.abs(hash).toString(16).padStart(32, '0') + 
-         Math.abs(hash * 31).toString(16).padStart(32, '0');
-}
+import bcrypt from 'bcryptjs';
+
+// bcrypt Cost Factor (Work Factor)
+// 10 = ~100ms pro Hash (guter Kompromiss zwischen Sicherheit und Performance)
+// Erhöhen wenn mehr Rechenleistung verfügbar ist
+const BCRYPT_ROUNDS = 10;
 
 // Hash a PIN for storage
+// Erzeugt automatisch einen Salt und hasht den PIN
 export async function hashPIN(pin: string): Promise<string> {
-  return await sha256(pin);
+  return await bcrypt.hash(pin, BCRYPT_ROUNDS);
 }
 
 // Verify a PIN against stored hash
+// Vergleicht den PIN mit dem gespeicherten Hash
 export async function verifyPIN(pin: string, storedHash: string): Promise<boolean> {
-  const pinHash = await sha256(pin);
-  return pinHash === storedHash;
+  return await bcrypt.compare(pin, storedHash);
 }
 
-// Check if a stored value is already hashed (migration helper)
+// Check if a stored value is a bcrypt hash (migration helper)
 export function isAlreadyHashed(value: string): boolean {
-  // Hash is always 64 hex characters
-  return /^[a-f0-9]{64}$/.test(value);
+  // bcrypt hashes start with $2a$, $2b$, or $2y$ and are 60 chars long
+  return /^\$2[aby]\$\d{2}\$.{53}$/.test(value);
 }
 
-// Login attempt tracking
+// ============================================================
+// LOGIN ATTEMPT TRACKING
+// 
+// Schutz gegen Brute-Force Angriffe:
+// - Maximal 5 Fehlversuche
+// - Danach 5 Minuten Lockout
+// - Lockout wird automatisch aufgehoben
+// ============================================================
+
 export interface LoginAttempts {
   count: number;
   lastAttempt: number;
