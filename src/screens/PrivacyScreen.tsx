@@ -109,7 +109,7 @@ export default function PrivacyScreen() {
             <Ionicons name="mail-outline" size={20} color="#1565C0" />
             <View style={{ flex: 1 }}>
               <Text style={styles.contactLabel}>{t('privacy.contactLabel')}</Text>
-              <Text style={styles.contactEmail}>YAZZEEDMI@GMAIL.COM</Text>
+              <Text style={styles.contactEmail}>Yazeed.mastafa55@gmail.com</Text>
             </View>
           </View>
         </View>
