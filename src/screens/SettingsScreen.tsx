@@ -154,7 +154,21 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    showAlert(t('settings.logout'), t('settings.logoutConfirm'));
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(t('settings.logout') + ': ' + t('settings.logoutConfirm'));
+      if (confirmed) {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    } else {
+      Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [
+        { text: t('general.cancel'), style: 'cancel' },
+        { text: t('settings.logoutBtn'), style: 'destructive', onPress: () => {
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+        }},
+      ]);
+    }
   };
 
   const handleTestPrint = async () => {
