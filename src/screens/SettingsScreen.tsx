@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView, Modal, FlatList, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../stores/appStore';
 import { setLanguage as setI18nLanguage } from '../i18n';
 import { translations } from '../i18n/translations';
@@ -48,6 +49,7 @@ function showAlert(title: string, msg: string) {
 }
 
 export default function SettingsScreen() {
+  const navigation = useNavigation();
   const { language, setLanguage: setAppLanguage, printerConnected, setPrinterConnected, setPrinterDeviceId, currentUser, setIsAuthenticated, setCurrentUser } = useAppStore();
   const isOnline = useAppStore((s) => s.isOnline);
   const t = useCallback((key: string) => translations[language]?.[key] ?? key, [language]);
