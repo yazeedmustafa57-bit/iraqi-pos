@@ -11,7 +11,8 @@ import {
   isConnected, getConnectedPrinterName, printTestPage,
   PrinterDevice, requestBluetoothPermission,
 } from '../services/bluetoothPrinter';
-import { getPendingSyncItems, updatePaymentAccounts, getPaymentAccounts } from '../database/db';
+import { getPendingSyncItems, updatePaymentAccounts, getPaymentAccounts, getUserByPhone } from '../database/db';
+import { verifyPINForDeletion, deleteAllShopData, getDeletableDataSummary } from '../services/accountDeletion';
 import { TextInput } from 'react-native';
 import ConnectivityIndicator from '../components/ConnectivityIndicator';
 import { Language } from '../types';
@@ -69,6 +70,14 @@ export default function SettingsScreen() {
   const [fibForm, setFibForm] = useState<FIBConfig>(fibConfig);
   const [savingFIB, setSavingFIB] = useState(false);
   const [fibTestStatus, setFibTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<'warning' | 'pin' | 'confirm' | 'done'>('warning');
+  const [deletePin, setDeletePin] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteSummary, setDeleteSummary] = useState({ products: 0, transactions: 0, pendingSync: 0 });
+  const [deleting, setDeleting] = useState(false);
 
   const loadPaymentAccounts = async () => {
     if (!currentUser) return;
@@ -129,6 +138,54 @@ export default function SettingsScreen() {
     } catch (e: any) {
       setFibTestStatus('error');
       showAlert('❌', e.message || 'Connection failed');
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (!currentUser) return;
+    const summary = getDeletableDataSummary(currentUser.id);
+    setDeleteSummary(summary);
+    setDeleteStep('warning');
+    setDeletePin('');
+    setDeleteConfirmText('');
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteVerifyPin = async () => {
+    if (!currentUser || !deletePin) return;
+    try {
+      const user = await getUserByPhone(currentUser.phone);
+      if (user) {
+        const valid = await verifyPINForDeletion(currentUser.phone, deletePin, user.pin);
+        if (valid) {
+          setDeleteStep('confirm');
+        } else {
+          showAlert(t('general.error'), t('auth.wrongCredentials'));
+        }
+      }
+    } catch (e: any) {
+      showAlert(t('general.error'), String(e?.message || e));
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!currentUser || deleteConfirmText !== 'LÖSCHEN' && deleteConfirmText !== 'DELETE' && deleteConfirmText !== 'سڕینەوە' && deleteConfirmText !== 'حذف') return;
+    setDeleting(true);
+    try {
+      const result = deleteAllShopData(currentUser.id, currentUser.phone);
+      if (result.success) {
+        setDeleteStep('done');
+        setTimeout(() => {
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+        }, 2000);
+      } else {
+        showAlert(t('general.error'), result.error || 'Deletion failed');
+      }
+    } catch (e: any) {
+      showAlert(t('general.error'), String(e?.message || e));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -520,6 +577,17 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Delete Account */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={[styles.optionRow, { backgroundColor: '#fff0f0' }]}
+          onPress={handleDeleteAccount}
+        >
+          <Ionicons name="trash-outline" size={22} color="#e53935" />
+          <Text style={[styles.optionText, { color: '#e53935', fontWeight: '600' }]}>{t('settings.deleteAccount')}</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* About */}
       <View style={styles.section}>
         <View style={styles.aboutCard}>
@@ -528,6 +596,78 @@ export default function SettingsScreen() {
           <Text style={styles.aboutVersion}>v1.0.0</Text>
         </View>
       </View>
+
+      {/* Delete Account Modal */}
+      <Modal visible={showDeleteModal} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, maxHeight: '80%' }}>
+            {deleteStep === 'warning' && (
+              <>
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <Ionicons name="warning" size={48} color="#e53935" />
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#e53935', marginTop: 8 }}>{t('settings.deleteAccountWarning')}</Text>
+                </View>
+                <Text style={{ fontSize: 14, color: '#555', textAlign: 'center', marginBottom: 12 }}>{t('settings.deleteAccountDesc')}</Text>
+                <View style={{ backgroundColor: '#fff3e0', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 13, color: '#e65100', fontWeight: '600' }}>{t('settings.deleteAccountWillDelete')}:</Text>
+                  <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>• {t('settings.deleteShopData')} ({deleteSummary.products})</Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>• {t('settings.deleteTransactions')} ({deleteSummary.transactions})</Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>• {t('settings.deleteFibConfig')}</Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>• {t('settings.deleteAccountSettings')}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity style={{ flex: 1, padding: 14, backgroundColor: '#f0f0f0', borderRadius: 10, alignItems: 'center' }} onPress={() => setShowDeleteModal(false)}>
+                    <Text style={{ color: '#666', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 1, padding: 14, backgroundColor: '#e53935', borderRadius: 10, alignItems: 'center' }} onPress={() => setDeleteStep('pin')}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('settings.deleteAccountContinue')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+            {deleteStep === 'pin' && (
+              <>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 12 }}>{t('settings.deleteAccountVerifyPin')}</Text>
+                <Text style={{ fontSize: 13, color: '#888', textAlign: 'center', marginBottom: 16 }}>{t('settings.deleteAccountPinDesc')}</Text>
+                <TextInput style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 18, textAlign: 'center', letterSpacing: 8 }} placeholder="••••" value={deletePin} onChangeText={setDeletePin} keyboardType="numeric" secureTextEntry maxLength={6} />
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+                  <TouchableOpacity style={{ flex: 1, padding: 14, backgroundColor: '#f0f0f0', borderRadius: 10, alignItems: 'center' }} onPress={() => setDeleteStep('warning')}>
+                    <Text style={{ color: '#666', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 1, padding: 14, backgroundColor: '#e53935', borderRadius: 10, alignItems: 'center' }} onPress={handleDeleteVerifyPin} disabled={!deletePin}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('settings.deleteAccountContinue')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+            {deleteStep === 'confirm' && (
+              <>
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <Ionicons name="alert-circle" size={48} color="#e53935" />
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#e53935', marginTop: 8 }}>{t('settings.deleteAccountFinalConfirm')}</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: '#888', textAlign: 'center', marginBottom: 12 }}>{t('settings.deleteAccountTypeDelete')}</Text>
+                <TextInput style={{ borderWidth: 1, borderColor: '#e53935', borderRadius: 8, padding: 12, fontSize: 16, textAlign: 'center' }} placeholder="LÖSCHEN / DELETE" value={deleteConfirmText} onChangeText={setDeleteConfirmText} autoCapitalize="characters" />
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+                  <TouchableOpacity style={{ flex: 1, padding: 14, backgroundColor: '#f0f0f0', borderRadius: 10, alignItems: 'center' }} onPress={() => setDeleteStep('pin')}>
+                    <Text style={{ color: '#666', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 1, padding: 14, backgroundColor: '#e53935', borderRadius: 10, alignItems: 'center' }} onPress={handleDeleteConfirm} disabled={deleting || (deleteConfirmText !== 'LÖSCHEN' && deleteConfirmText !== 'DELETE' && deleteConfirmText !== 'سڕینەوە' && deleteConfirmText !== 'حذف')}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>{deleting ? '...' : t('settings.deleteAccountFinal')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+            {deleteStep === 'done' && (
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#4CAF50', marginTop: 8 }}>{t('settings.deleteAccountDone')}</Text>
+                <Text style={{ fontSize: 13, color: '#888', marginTop: 4 }}>{t('settings.deleteAccountRedirecting')}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Bluetooth Scan Modal */}
       <Modal visible={showScanModal} transparent animationType="slide">
