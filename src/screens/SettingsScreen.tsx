@@ -172,7 +172,7 @@ export default function SettingsScreen() {
     if (!currentUser || deleteConfirmText !== 'LÖSCHEN' && deleteConfirmText !== 'DELETE' && deleteConfirmText !== 'سڕینەوە' && deleteConfirmText !== 'حذف') return;
     setDeleting(true);
     try {
-      const result = deleteAllShopData(currentUser.id, currentUser.phone);
+      const result = await deleteAllShopData(currentUser.id, currentUser.phone);
       if (result.success) {
         setDeleteStep('done');
         setTimeout(() => {
